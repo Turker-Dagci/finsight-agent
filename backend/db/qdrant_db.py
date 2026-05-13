@@ -1,6 +1,5 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
-import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
@@ -34,13 +33,8 @@ def init_collection():
     return client
 
 def get_embedding(text: str) -> list:
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-    result = genai.embed_content(
-        model="models/embedding-001",
-        content=text,
-        task_type="retrieval_document"
-    )
-    return result["embedding"]
+    from backend.utils.gemini import get_embedding as gemini_embed
+    return gemini_embed(text)
 
 if __name__ == "__main__":
     client = init_collection()
