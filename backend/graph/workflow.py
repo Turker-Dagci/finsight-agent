@@ -5,6 +5,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from agents.parser_agent import parse_pdf, save_to_qdrant
 import uuid
 from agents.analyst_agent import run_analyst
+from agents.advisory_agent import run_advisory
+from agents.analyst_agent import run_analyst
 
 class FinSightState(TypedDict):
     file_path: Optional[str]
@@ -23,6 +25,7 @@ class FinSightState(TypedDict):
     final_response: Optional[str]
     current_step: str
     errors: List[str]
+    subscriptions: Optional[List[dict]]
 
 def parser_node(state: FinSightState) -> dict:
     print("[Parser Agent] Çalışıyor...")
@@ -61,6 +64,7 @@ def analyst_node(state: FinSightState) -> dict:
         return {
             "categories": result["categories"],
             "anomalies": result["anomalies"],
+            "subscriptions": result.get("subscriptions", []),
             "inflation_analysis": result["inflation_analysis"],
             "tax_breakdown": result["tax_breakdown"],
             "current_step": "advisory"
@@ -71,11 +75,25 @@ def analyst_node(state: FinSightState) -> dict:
 
 def advisory_node(state: FinSightState) -> dict:
     print("[Advisory Agent] Çalışıyor...")
-    return {
-        "final_response": "Analiz tamamlandı. Gün 4'te gerçek yanıt üretilecek.",
-        "proactive_alerts": [],
-        "current_step": "done"
-    }
+    try:
+        result = run_advisory(
+            user_query=state.get("user_query", "Genel analiz yap"),
+            categories=state.get("categories", {}),
+            inflation_analysis=state.get("inflation_analysis", {}),
+            tax_breakdown=state.get("tax_breakdown", {}),
+            anomalies=state.get("anomalies", []),
+            subscriptions=state.get("subscriptions", []),
+            parsed_summary=state.get("parsed_summary", {}),
+        )
+        return {
+            "fx_shield": result["fx_shield"],
+            "proactive_alerts": result["proactive_alerts"],
+            "final_response": result["final_response"],
+            "current_step": "done"
+        }
+    except Exception as e:
+        print(f"[Advisory] HATA: {e}")
+        return {"errors": [str(e)], "current_step": "done"}
 
 def route_step(state: FinSightState) -> str:
     step = state.get("current_step", "done")
