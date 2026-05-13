@@ -4,6 +4,7 @@ import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from agents.parser_agent import parse_pdf, save_to_qdrant
 import uuid
+from agents.analyst_agent import run_analyst
 
 class FinSightState(TypedDict):
     file_path: Optional[str]
@@ -53,13 +54,20 @@ def parser_node(state: FinSightState) -> dict:
 
 def analyst_node(state: FinSightState) -> dict:
     print("[Analyst Agent] Çalışıyor...")
-    return {
-        "categories": {"gida": 450.0, "eglence": 299.99, "ulasim": 1200.0},
-        "anomalies": [],
-        "inflation_analysis": {},
-        "tax_breakdown": {},
-        "current_step": "advisory"
-    }
+    try:
+        transactions = state.get("transactions", [])
+        parsed_summary = state.get("parsed_summary", {})
+        result = run_analyst(transactions, parsed_summary)
+        return {
+            "categories": result["categories"],
+            "anomalies": result["anomalies"],
+            "inflation_analysis": result["inflation_analysis"],
+            "tax_breakdown": result["tax_breakdown"],
+            "current_step": "advisory"
+        }
+    except Exception as e:
+        print(f"[Analyst] HATA: {e}")
+        return {"errors": [str(e)], "current_step": "done"}
 
 def advisory_node(state: FinSightState) -> dict:
     print("[Advisory Agent] Çalışıyor...")
