@@ -1,11 +1,17 @@
 from typing import TypedDict, Optional, List
 from langgraph.graph import StateGraph, END
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from agents.parser_agent import parse_pdf, save_to_qdrant
+import uuid
 
 class FinSightState(TypedDict):
     file_path: Optional[str]
     user_query: Optional[str]
+    session_id: Optional[str]
     raw_text: Optional[str]
     transactions: Optional[List[dict]]
+    parsed_summary: Optional[dict]
     categories: Optional[dict]
     anomalies: Optional[List[str]]
     inflation_analysis: Optional[dict]
@@ -19,15 +25,31 @@ class FinSightState(TypedDict):
 
 def parser_node(state: FinSightState) -> dict:
     print("[Parser Agent] Çalışıyor...")
-    return {
-        "raw_text": "STUB: Gün 2'de Gemini Vision ile doldurulacak",
-        "transactions": [
-            {"date": "2026-05-01", "description": "Migros", "amount": -450.0, "currency": "TRY"},
-            {"date": "2026-05-02", "description": "Netflix", "amount": -299.99, "currency": "TRY"},
-            {"date": "2026-05-03", "description": "Shell", "amount": -1200.0, "currency": "TRY"},
-        ],
-        "current_step": "analyst"
-    }
+    try:
+        file_path = state.get("file_path")
+        session_id = state.get("session_id") or str(uuid.uuid4())
+
+        parsed = parse_pdf(file_path)
+        save_to_qdrant(parsed, session_id)
+
+        return {
+            "session_id": session_id,
+            "transactions": parsed.get("islemler", []),
+            "parsed_summary": {
+                "hesap_sahibi": parsed.get("hesap_sahibi"),
+                "donem": parsed.get("donem"),
+                "toplam_gelir": parsed.get("toplam_gelir"),
+                "toplam_gider": parsed.get("toplam_gider"),
+            },
+            "current_step": "analyst"
+        }
+    except Exception as e:
+        print(f"[Parser] HATA: {e}")
+        return {
+            "errors": [str(e)],
+            "transactions": [],
+            "current_step": "done"
+        }
 
 def analyst_node(state: FinSightState) -> dict:
     print("[Analyst Agent] Çalışıyor...")
@@ -55,41 +77,31 @@ def route_step(state: FinSightState) -> str:
 
 def build_graph():
     workflow = StateGraph(FinSightState)
-
     workflow.add_node("parser", parser_node)
     workflow.add_node("analyst", analyst_node)
     workflow.add_node("advisory", advisory_node)
-
     workflow.set_entry_point("parser")
-
-    workflow.add_conditional_edges(
-        "parser", route_step,
-        {"analyst": "analyst", "done": END}
-    )
-    workflow.add_conditional_edges(
-        "analyst", route_step,
-        {"advisory": "advisory", "done": END}
-    )
-    workflow.add_conditional_edges(
-        "advisory", route_step,
-        {"done": END}
-    )
-
+    workflow.add_conditional_edges("parser", route_step, {"analyst": "analyst", "done": END})
+    workflow.add_conditional_edges("analyst", route_step, {"advisory": "advisory", "done": END})
+    workflow.add_conditional_edges("advisory", route_step, {"done": END})
     return workflow.compile()
 
 graph = build_graph()
 
 if __name__ == "__main__":
     result = graph.invoke({
-        "file_path": "test.pdf",
+        "file_path": "data/samples/demo_ekstre.pdf",
         "user_query": "Bu ay en çok neye harcadım?",
+        "session_id": None,
         "raw_text": None, "transactions": None,
-        "categories": None, "anomalies": None,
-        "inflation_analysis": None, "tax_breakdown": None,
-        "cash_flow_prediction": None, "fx_shield": None,
-        "proactive_alerts": None, "final_response": None,
-        "current_step": "parser", "errors": []
+        "parsed_summary": None, "categories": None,
+        "anomalies": None, "inflation_analysis": None,
+        "tax_breakdown": None, "cash_flow_prediction": None,
+        "fx_shield": None, "proactive_alerts": None,
+        "final_response": None, "current_step": "parser",
+        "errors": []
     })
     print("\nGraf tamamlandı:")
-    print(f"  Kategoriler : {result.get('categories')}")
-    print(f"  Yanıt       : {result.get('final_response')}")
+    print(f"  Session    : {result.get('session_id')}")
+    print(f"  İşlem sayısı: {len(result.get('transactions', []))}")
+    print(f"  Özet       : {result.get('parsed_summary')}")
