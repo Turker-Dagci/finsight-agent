@@ -1,7 +1,8 @@
-import os
 import json
-import sys
+import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.logger import setup_logger
+logger = setup_logger("analyst_agent")
 
 from google import genai
 from google.genai import types as genai_types
@@ -119,19 +120,19 @@ def detect_subscriptions(transactions: list) -> list:
 
 def run_analyst(transactions: list, parsed_summary: dict) -> dict:
     """Tüm analiz modüllerini çalıştırır ve sonucu döner."""
-    print("[Analyst] Kategorilendirme...")
+    logger.info("Kategorilendirme başladı")
     categories = categorize_transactions(transactions)
 
-    print("[Analyst] Enflasyon analizi...")
+    logger.info("Enflasyon analizi başladı")
     inflation = calculate_inflation_impact(categories)
 
-    print("[Analyst] Vergi X-Ray...")
+    logger.info("Vergi X-Ray hesaplanıyor")
     tax = calculate_tax_breakdown(categories)
 
-    print("[Analyst] Anomali tespiti...")
+    logger.info("Anomali tespiti başladı")
     anomalies = detect_anomalies(transactions)
 
-    print("[Analyst] Abonelik tespiti...")
+    logger.info("Abonelik tespiti başladı")
     subscriptions = detect_subscriptions(transactions)
 
     toplam_gider = sum(categories.values())

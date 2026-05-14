@@ -2,6 +2,8 @@ import os
 import json
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.logger import setup_logger
+logger = setup_logger("parser_agent")
 
 from google.genai import types, types as genai_types
 from google import genai
@@ -52,36 +54,39 @@ def parse_pdf(file_path: str) -> dict:
     
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     
-    with open(file_path, "rb") as f:
-        pdf_bytes = f.read()
-    
-    print(f"[Parser] PDF okundu: {len(pdf_bytes)} byte")
-    
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=[
-            types.Part.from_bytes(
-                data=pdf_bytes,
-                mime_type="application/pdf"
-            ),
-            PARSE_PROMPT
-        ]
-    )
-    
-    raw_text = response.text.strip()
-    print(f"[Parser] Gemini yanıtı alındı: {len(raw_text)} karakter")
-    
-    # JSON temizle
-    if raw_text.startswith("```"):
-        raw_text = raw_text.split("```")[1]
-        if raw_text.startswith("json"):
-            raw_text = raw_text[4:]
-    raw_text = raw_text.strip()
-    
-    result = json.loads(raw_text)
-    print(f"[Parser] {len(result.get('islemler', []))} işlem parse edildi")
-    
-    return result
+    try:
+        with open(file_path, "rb") as f:
+            pdf_bytes = f.read()
+        
+        logger.info(f"PDF okundu: {len(pdf_bytes)} byte")
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_bytes(
+                    data=pdf_bytes,
+                    mime_type="application/pdf"
+                ),
+                PARSE_PROMPT
+            ]
+        )
+        
+        raw_text = response.text.strip()
+        logger.info(f"Gemini yanıtı alındı: {len(raw_text)} karakter")
+        
+        if raw_text.startswith("```"):
+            raw_text = raw_text.split("```")[1]
+            if raw_text.startswith("json"):
+                raw_text = raw_text[4:]
+        raw_text = raw_text.strip()
+        
+        result = json.loads(raw_text)
+        logger.info(f"{len(result.get('islemler', []))} işlem parse edildi")
+        return result
+
+    except Exception as e:
+        logger.error(f"PDF parse hatası: {str(e)}", exc_info=True)
+        return {}
 
 from google.genai import types as genai_types
 
@@ -132,7 +137,7 @@ def save_to_qdrant(parsed_data: dict, session_id: str) -> int:
         points.append(point)
 
     qdrant.upsert(collection_name=collection, points=points)
-    print(f"[Parser] {len(points)} işlem Qdrant'a kaydedildi")
+    logger.info(f"{len(points)} işlem Qdrant'a kaydedildi")
     return len(points)
 
 if __name__ == "__main__":

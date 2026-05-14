@@ -1,3 +1,32 @@
 2026-05-14 19:19:16 | test                 | INFO     | Logger kuruldu
 2026-05-14 19:19:16 | test                 | WARNING  | Bu bir uyarı
 2026-05-14 19:19:16 | test                 | ERROR    | Bu bir hata
+2026-05-14 19:36:36 | workflow             | INFO     | Parser Agent başladı
+2026-05-14 19:36:37 | parser_agent         | INFO     | PDF okundu: 3524 byte
+2026-05-14 19:37:03 | parser_agent         | INFO     | Gemini yanıtı alındı: 3884 karakter
+2026-05-14 19:37:03 | parser_agent         | INFO     | 24 işlem parse edildi
+2026-05-14 19:37:36 | parser_agent         | INFO     | 24 işlem Qdrant'a kaydedildi
+2026-05-14 19:37:36 | workflow             | INFO     | Analyst Agent başladı
+2026-05-14 19:37:36 | workflow             | INFO     | Advisory Agent başladı
+2026-05-14 19:37:36 | advisory_agent       | INFO     | Piyasa bağlamı çekiliyor
+2026-05-14 19:43:24 | workflow             | INFO     | Parser Agent başladı
+2026-05-14 19:43:24 | parser_agent         | INFO     | PDF okundu: 3524 byte
+2026-05-14 19:43:50 | parser_agent         | INFO     | Gemini yanıtı alındı: 3890 karakter
+2026-05-14 19:43:50 | parser_agent         | INFO     | 24 işlem parse edildi
+2026-05-14 19:44:21 | parser_agent         | INFO     | 24 işlem Qdrant'a kaydedildi
+2026-05-14 19:44:21 | workflow             | INFO     | Analyst Agent başladı
+2026-05-14 19:44:21 | analyst_agent        | INFO     | Kategorilendirme başladı
+2026-05-14 19:44:21 | analyst_agent        | INFO     | Enflasyon analizi başladı
+2026-05-14 19:44:21 | analyst_agent        | INFO     | Vergi X-Ray hesaplanıyor
+2026-05-14 19:44:21 | analyst_agent        | INFO     | Anomali tespiti başladı
+2026-05-14 19:44:21 | analyst_agent        | INFO     | Abonelik tespiti başladı
+2026-05-14 19:44:21 | workflow             | INFO     | Advisory Agent başladı
+2026-05-14 19:44:21 | advisory_agent       | INFO     | Piyasa bağlamı çekiliyor
+2026-05-14 19:44:21 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-14 19:44:22 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-14 19:44:22 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-14 19:44:22 | context_fetcher      | INFO     | USD/TL: 45.4299
+2026-05-14 19:44:22 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1
+2026-05-14 19:44:22 | advisory_agent       | INFO     | Döviz kalkanı hesaplanıyor
+2026-05-14 19:44:22 | advisory_agent       | INFO     | Proaktif uyarılar üretiliyor
+2026-05-14 19:44:22 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor

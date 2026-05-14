@@ -1,7 +1,10 @@
 from typing import TypedDict, Optional, List
 from langgraph.graph import StateGraph, END
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from utils.logger import setup_logger
+logger = setup_logger("workflow")
 from agents.parser_agent import parse_pdf, save_to_qdrant
 import uuid
 from agents.analyst_agent import run_analyst
@@ -28,7 +31,7 @@ class FinSightState(TypedDict):
     subscriptions: Optional[List[dict]]
 
 def parser_node(state: FinSightState) -> dict:
-    print("[Parser Agent] Çalışıyor...")
+    logger.info("Parser Agent başladı")
     try:
         file_path = state.get("file_path")
         session_id = state.get("session_id") or str(uuid.uuid4())
@@ -48,7 +51,7 @@ def parser_node(state: FinSightState) -> dict:
             "current_step": "analyst"
         }
     except Exception as e:
-        print(f"[Parser] HATA: {e}")
+        logger.error(f"Parser hatası: {str(e)}", exc_info=True)
         return {
             "errors": [str(e)],
             "transactions": [],
@@ -56,7 +59,7 @@ def parser_node(state: FinSightState) -> dict:
         }
 
 def analyst_node(state: FinSightState) -> dict:
-    print("[Analyst Agent] Çalışıyor...")
+    logger.info("Analyst Agent başladı")
     try:
         transactions = state.get("transactions", [])
         parsed_summary = state.get("parsed_summary", {})
@@ -70,11 +73,11 @@ def analyst_node(state: FinSightState) -> dict:
             "current_step": "advisory"
         }
     except Exception as e:
-        print(f"[Analyst] HATA: {e}")
+        logger.error(f"Analyst hatası: {str(e)}", exc_info=True)
         return {"errors": [str(e)], "current_step": "done"}
 
 def advisory_node(state: FinSightState) -> dict:
-    print("[Advisory Agent] Çalışıyor...")
+    logger.info("Advisory Agent başladı")
     try:
         result = run_advisory(
             user_query=state.get("user_query", "Genel analiz yap"),
@@ -92,7 +95,7 @@ def advisory_node(state: FinSightState) -> dict:
             "current_step": "done"
         }
     except Exception as e:
-        print(f"[Advisory] HATA: {e}")
+        logger.error(f"Advisory hatası: {str(e)}", exc_info=True)
         return {"errors": [str(e)], "current_step": "done"}
 
 def route_step(state: FinSightState) -> str:

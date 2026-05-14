@@ -1,6 +1,7 @@
-import os
-import sys
+import os, sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.logger import setup_logger
+logger = setup_logger("advisory_agent")
 
 from google import genai
 from dotenv import load_dotenv
@@ -185,18 +186,18 @@ def run_advisory(
     financial_profile: dict = None
 ) -> dict:
     """Advisory Agent ana fonksiyonu."""
-    print("[Advisory] Piyasa bağlamı çekiliyor...")
+    logger.info("Piyasa bağlamı çekiliyor")
     market_context = get_market_context()
 
-    print("[Advisory] Döviz kalkanı hesaplanıyor...")
+    logger.info("Döviz kalkanı hesaplanıyor")
     fx_shield = calculate_fx_shield(parsed_summary, market_context["doviz"])
 
-    print("[Advisory] Proaktif uyarılar üretiliyor...")
+    logger.info("Proaktif uyarılar üretiliyor")
     alerts = generate_proactive_alerts(
         categories, inflation_analysis, parsed_summary, subscriptions
     )
 
-    print("[Advisory] Gemini yanıtı üretiliyor...")
+    logger.info("Gemini yanıtı üretiliyor")
     response = generate_advisory_response(
         user_query=user_query,
         categories=categories,

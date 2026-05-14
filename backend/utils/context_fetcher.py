@@ -1,4 +1,7 @@
-import os
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.logger import setup_logger
+logger = setup_logger("context_fetcher")
 import json
 import requests
 from datetime import datetime
@@ -49,11 +52,11 @@ def get_exchange_rates() -> dict:
             pass  # Altın opsiyonel
 
         rates["tarih"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-        print(f"[Context] Döviz kurları alındı: {list(rates.keys())}")
+        logger.info(f"Döviz kurları alındı: {list(rates.keys())}")
         return rates
 
     except Exception as e:
-        print(f"[Context] Döviz hata: {e}")
+        logger.error(f"Döviz çekme hatası: {str(e)}")
         # Fallback değerler
         return {
             "USD": {"alis": 38.5, "satis": 38.7},
@@ -95,7 +98,7 @@ def get_economic_news() -> list:
     api_key = os.getenv("NEWS_API_KEY")
 
     if not api_key:
-        print("[Context] NEWS_API_KEY bulunamadı, varsayılan haberler kullanılıyor.")
+        logger.warning("NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor")
         return get_fallback_news()
 
     try:
@@ -121,11 +124,11 @@ def get_economic_news() -> list:
                 "tarih": article.get("publishedAt", "")[:10],
             })
 
-        print(f"[Context] {len(news)} haber alındı")
+        logger.info(f"{len(news)} haber alındı")
         return news
 
     except Exception as e:
-        print(f"[Context] Haber hata: {e}")
+        logger.error(f"Haber çekme hatası: {str(e)}")
         return get_fallback_news()
 
 def get_fallback_news() -> list:
@@ -139,7 +142,7 @@ def get_fallback_news() -> list:
 # ── Ana Fonksiyon ─────────────────────────────────────────────
 def get_market_context() -> dict:
     """Tüm piyasa bağlamını tek seferde toplar."""
-    print("[Context Fetcher] Piyasa verileri çekiliyor...")
+    logger.info("Piyasa verileri çekiliyor")
 
     rates = get_exchange_rates()
     inflation = get_inflation_data()
@@ -157,8 +160,8 @@ def get_market_context() -> dict:
         }
     }
 
-    print(f"[Context] USD/TL: {context['ozet']['usd_tl']}")
-    print(f"[Context] Yıllık TÜFE: {context['ozet']['yillik_tufe']}%")
+    logger.info(f"USD/TL: {context['ozet']['usd_tl']}")
+    logger.info(f"Yıllık TÜFE: %{context['ozet']['yillik_tufe']}")
     return context
 
 
