@@ -64,6 +64,7 @@ pyasn1==0.6.3
 pyasn1_modules==0.4.2
 pycparser==3.0
 pydantic==2.13.4
+pydantic-settings==2.14.1
 pydantic_core==2.46.4
 pydeck==0.9.2
 pyparsing==3.3.2
