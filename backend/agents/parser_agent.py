@@ -3,14 +3,13 @@ import json
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils.logger import setup_logger
-logger = setup_logger("parser_agent")
-
-from google.genai import types, types as genai_types
-from google import genai
-from google.genai import types
+from utils.gemini import generate_vision_with_retry, get_embedding
 from dotenv import load_dotenv
+import uuid as uuid_lib
 
+logger = setup_logger("parser_agent")
 load_dotenv()
+
 
 PARSE_PROMPT = """
 Bu bir banka ekstresi veya fatura belgesidir. 
@@ -50,36 +49,26 @@ Tutarları sayısal değer olarak ver (nokta ondalık ayraç).
 """
 
 def parse_pdf(file_path: str) -> dict:
-    """PDF dosyasını Gemini Vision ile parse eder."""
-    
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-    
     try:
         with open(file_path, "rb") as f:
             pdf_bytes = f.read()
-        
+
         logger.info(f"PDF okundu: {len(pdf_bytes)} byte")
-        
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[
-                types.Part.from_bytes(
-                    data=pdf_bytes,
-                    mime_type="application/pdf"
-                ),
-                PARSE_PROMPT
-            ]
+
+        raw_text = generate_vision_with_retry(
+            prompt=PARSE_PROMPT,
+            file_bytes=pdf_bytes,
+            mime_type="application/pdf"
         )
-        
-        raw_text = response.text.strip()
+
         logger.info(f"Gemini yanıtı alındı: {len(raw_text)} karakter")
-        
+
         if raw_text.startswith("```"):
             raw_text = raw_text.split("```")[1]
             if raw_text.startswith("json"):
                 raw_text = raw_text[4:]
         raw_text = raw_text.strip()
-        
+
         result = json.loads(raw_text)
         logger.info(f"{len(result.get('islemler', []))} işlem parse edildi")
         return result
@@ -109,16 +98,7 @@ def save_to_qdrant(parsed_data: dict, session_id: str) -> int:
         text = f"{islem['tarih']} {islem['aciklama']} {islem['tutar']} TL {islem['kategori']}"
 
         # Gemini embedding
-        embed_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-        embed_response = embed_client.models.embed_content(
-    model="gemini-embedding-001",
-    contents=text,
-    config=genai_types.EmbedContentConfig(
-        task_type="RETRIEVAL_DOCUMENT",
-        output_dimensionality=768
-    )
-)
-        vector = embed_response.embeddings[0].values
+        vector = get_embedding(text)
 
         point = PointStruct(
             id=str(uuid_lib.uuid4()),

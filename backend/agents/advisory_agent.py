@@ -3,7 +3,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils.logger import setup_logger
 logger = setup_logger("advisory_agent")
 
-from google import genai
+from utils.gemini import generate_with_retry
 from dotenv import load_dotenv
 from utils.context_fetcher import get_market_context
 
@@ -89,7 +89,6 @@ def generate_advisory_response(
 ) -> str:
     """Gemini ile kapsamlı finansal tavsiye üretir."""
 
-    client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     # Bağlam hazırla
     doviz_ozet = f"USD/TL: {market_context['ozet']['usd_tl']}, EUR/TL: {market_context['ozet']['eur_tl']}"
@@ -169,11 +168,7 @@ Lütfen şunları içeren bir yanıt ver:
 
 Yanıtı maksimum 300 kelime tut. Madde madde yaz."""
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
-    return response.text
+    return generate_with_retry(prompt, use_system_prompt=True)
 
 def run_advisory(
     user_query: str,
