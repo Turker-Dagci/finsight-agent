@@ -1,0 +1,3 @@
+2026-05-14 19:19:16 | test                 | INFO     | Logger kuruldu
+2026-05-14 19:19:16 | test                 | WARNING  | Bu bir uyarı
+2026-05-14 19:19:16 | test                 | ERROR    | Bu bir hata
