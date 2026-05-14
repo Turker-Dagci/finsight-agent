@@ -55,3 +55,25 @@
 2026-05-14 20:01:03 | gemini               | WARNING  | Gemini meşgul, 2s bekleyip tekrar deneniyor... (2/3)
 2026-05-14 20:01:08 | gemini               | WARNING  | Gemini meşgul, 4s bekleyip tekrar deneniyor... (3/3)
 2026-05-14 20:01:12 | gemini               | ERROR    | Tüm retry denemeleri başarısız.
+2026-05-14 20:07:27 | workflow             | INFO     | Parser Agent başladı
+2026-05-14 20:07:27 | parser_agent         | INFO     | PDF okundu: 3524 byte
+2026-05-14 20:07:52 | parser_agent         | INFO     | Gemini yanıtı alındı: 3886 karakter
+2026-05-14 20:07:52 | parser_agent         | INFO     | 24 işlem parse edildi
+2026-05-14 20:08:24 | parser_agent         | INFO     | 24 işlem Qdrant'a kaydedildi
+2026-05-14 20:08:24 | workflow             | INFO     | Analyst Agent başladı
+2026-05-14 20:08:24 | analyst_agent        | INFO     | Kategorilendirme başladı
+2026-05-14 20:08:24 | analyst_agent        | INFO     | Enflasyon analizi başladı
+2026-05-14 20:08:24 | analyst_agent        | INFO     | Vergi X-Ray hesaplanıyor
+2026-05-14 20:08:24 | analyst_agent        | INFO     | Anomali tespiti başladı
+2026-05-14 20:08:24 | analyst_agent        | INFO     | Abonelik tespiti başladı
+2026-05-14 20:08:24 | workflow             | INFO     | 3 anomali tespit edildi — direkt Advisory'e geçiliyor
+2026-05-14 20:08:24 | workflow             | INFO     | Advisory Agent başladı
+2026-05-14 20:08:24 | advisory_agent       | INFO     | Piyasa bağlamı çekiliyor
+2026-05-14 20:08:24 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-14 20:08:25 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-14 20:08:25 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-14 20:08:25 | context_fetcher      | INFO     | USD/TL: 45.4299
+2026-05-14 20:08:25 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1
+2026-05-14 20:08:25 | advisory_agent       | INFO     | Döviz kalkanı hesaplanıyor
+2026-05-14 20:08:25 | advisory_agent       | INFO     | Proaktif uyarılar üretiliyor
+2026-05-14 20:08:25 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor

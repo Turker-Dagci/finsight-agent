@@ -28,6 +28,7 @@ class FinSightState(TypedDict):
     final_response: Optional[str]
     current_step: str
     errors: List[str]
+    subscription_insights: Optional[dict]
     subscriptions: Optional[List[dict]]
 
 def parser_node(state: FinSightState) -> dict:
@@ -98,6 +99,77 @@ def advisory_node(state: FinSightState) -> dict:
         logger.error(f"Advisory hatası: {str(e)}", exc_info=True)
         return {"errors": [str(e)], "current_step": "done"}
 
+# Yeni node ekle — subscription optimizer
+def subscription_optimizer_node(state: FinSightState) -> dict:
+    logger.info("Subscription Optimizer Agent başladı")
+    try:
+        subscriptions = state.get("subscriptions", [])
+        categories = state.get("categories", {})
+        
+        toplam_gider = sum(categories.values())
+        toplam_abone = sum(s["tutar"] for s in subscriptions)
+        
+        oneriler = []
+        for s in subscriptions:
+            # Döviz bazlı abonelik tespiti
+            doviz_keywords = ["netflix", "spotify", "amazon", "apple", "youtube", "openai"]
+            if any(k in s["aciklama"].lower() for k in doviz_keywords):
+                oneriler.append(
+                    f"'{s['aciklama']}' döviz bazlı abonelik — "
+                    f"TL maliyeti her ay artıyor ({s['tutar']:.0f} TL)"
+                )
+            else:
+                oneriler.append(
+                    f"'{s['aciklama']}' aboneliğini değerlendirin ({s['tutar']:.0f} TL/ay)"
+                )
+        
+        tasarruf_potansiyeli = round(toplam_abone * 0.4, 2)
+        
+        logger.info(f"Abonelik optimizasyonu: {len(oneriler)} öneri, "
+                   f"{tasarruf_potansiyeli} TL tasarruf potansiyeli")
+        
+        return {
+            "subscription_insights": {
+                "oneriler": oneriler,
+                "toplam_abone_gider": toplam_abone,
+                "tasarruf_potansiyeli": tasarruf_potansiyeli,
+                "abone_gider_orani": round(toplam_abone / toplam_gider * 100, 1) if toplam_gider > 0 else 0
+            },
+            "current_step": "advisory"
+        }
+    except Exception as e:
+        logger.error(f"Subscription Optimizer hatası: {str(e)}", exc_info=True)
+        return {"current_step": "advisory"}
+
+
+# Mevcut route_step'i bu yeni versiyonla değiştir
+def route_after_analyst(state: FinSightState) -> str:
+    """
+    Analyst sonucuna göre dinamik routing.
+    Gerçek agentic karar verme burada.
+    """
+    anomalies = state.get("anomalies", [])
+    subscriptions = state.get("subscriptions", [])
+    categories = state.get("categories", {})
+
+    toplam_gider = sum(categories.values()) if categories else 0
+    toplam_abone = sum(s["tutar"] for s in subscriptions) if subscriptions else 0
+
+    # Abonelik yükü %15'i geçiyorsa optimizer devreye girer
+    if toplam_gider > 0 and toplam_abone / toplam_gider > 0.15:
+        logger.info(f"Abonelik yükü yüksek (%{toplam_abone/toplam_gider*100:.1f}) "
+                   f"— Subscription Optimizer devreye giriyor")
+        return "subscription_optimizer"
+
+    # Kritik anomali varsa direkt advisory
+    if len(anomalies) > 2:
+        logger.info(f"{len(anomalies)} anomali tespit edildi — direkt Advisory'e geçiliyor")
+        return "advisory"
+
+    # Normal akış
+    logger.info("Normal akış — Advisory'e geçiliyor")
+    return "advisory"
+
 def route_step(state: FinSightState) -> str:
     step = state.get("current_step", "done")
     if step in ["analyst", "advisory", "done"]:
@@ -106,13 +178,39 @@ def route_step(state: FinSightState) -> str:
 
 def build_graph():
     workflow = StateGraph(FinSightState)
+
     workflow.add_node("parser", parser_node)
     workflow.add_node("analyst", analyst_node)
+    workflow.add_node("subscription_optimizer", subscription_optimizer_node)
     workflow.add_node("advisory", advisory_node)
+
     workflow.set_entry_point("parser")
-    workflow.add_conditional_edges("parser", route_step, {"analyst": "analyst", "done": END})
-    workflow.add_conditional_edges("analyst", route_step, {"advisory": "advisory", "done": END})
-    workflow.add_conditional_edges("advisory", route_step, {"done": END})
+
+    workflow.add_conditional_edges(
+        "parser", route_step,
+        {"analyst": "analyst", "done": END}
+    )
+
+    # Analyst'tan sonra dinamik routing
+    workflow.add_conditional_edges(
+        "analyst", route_after_analyst,
+        {
+            "subscription_optimizer": "subscription_optimizer",
+            "advisory": "advisory"
+        }
+    )
+
+    # Optimizer her zaman advisory'e geçer
+    workflow.add_conditional_edges(
+        "subscription_optimizer", route_step,
+        {"advisory": "advisory", "done": END}
+    )
+
+    workflow.add_conditional_edges(
+        "advisory", route_step,
+        {"done": END}
+    )
+
     return workflow.compile()
 
 graph = build_graph()
@@ -122,6 +220,7 @@ if __name__ == "__main__":
         "file_path": "data/samples/demo_ekstre.pdf",
         "user_query": "Bu ay en çok neye harcadım?",
         "session_id": None,
+        "subscription_insights": None,
         "raw_text": None, "transactions": None,
         "parsed_summary": None, "categories": None,
         "anomalies": None, "inflation_analysis": None,
