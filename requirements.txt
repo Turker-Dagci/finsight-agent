@@ -22,7 +22,6 @@ google-api-python-client==2.196.0
 google-auth==2.52.0
 google-auth-httplib2==0.4.0
 google-genai==1.75.0
-google-generativeai==0.8.6
 googleapis-common-protos==1.75.0
 grpcio==1.80.0
 grpcio-status==1.71.2
@@ -76,6 +75,7 @@ pywin32==311
 PyYAML==6.0.3
 qdrant-client==1.18.0
 referencing==0.37.0
+reportlab==4.5.1
 requests==2.34.0
 requests-toolbelt==1.0.0
 rpds-py==0.30.0
