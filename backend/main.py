@@ -1,3 +1,8 @@
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
+
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -10,11 +15,16 @@ from utils.logger import setup_logger
 
 logger = setup_logger("api")
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="FinSight Agent API",
     description="Çok-Ajanlı KOBİ Finansal Analiz Sistemi",
     version="1.0.0"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,7 +71,8 @@ def health():
     return {"status": "ok", "service": "FinSight Agent", "version": "1.0.0"}
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+@limiter.limit("10/minute")
+async def upload_file(request: Request, file: UploadFile = File(...)):
     if not file.filename.endswith((".pdf", ".png", ".jpg", ".jpeg")):
         raise HTTPException(400, "Sadece PDF veya görüntü dosyası kabul edilir.")
 
@@ -93,7 +104,8 @@ async def upload_file(file: UploadFile = File(...)):
     }
 
 @app.post("/analyze")
-async def analyze(session_id: str, query: str = "Bu ay nasıl harcadım?"):
+@limiter.limit("5/minute")
+async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl harcadım?"):
     if session_id not in session_store:
         raise HTTPException(404, "Session bulunamadı. Önce /upload çağırın.")
 
@@ -150,15 +162,16 @@ async def analyze(session_id: str, query: str = "Bu ay nasıl harcadım?"):
     }
 
 @app.post("/query")
-async def query(request: QueryRequest):
-    if request.session_id not in session_store:
+@limiter.limit("20/minute")
+async def query(request: Request, request_body: QueryRequest):
+    if request_body.session_id not in session_store:
         raise HTTPException(404, "Session bulunamadı.")
 
-    cached = session_store[request.session_id].get("result")
+    cached = session_store[request_body.session_id].get("result")
     if not cached:
         raise HTTPException(400, "Önce /analyze çağırın.")
 
-    logger.info(f"Sorgu: {request.query[:50]} — session: {request.session_id[:8]}")
+    logger.info(f"Sorgu: {request_body.query[:50]} — session: {request_body.session_id[:8]}")
 
     from agents.advisory_agent import generate_advisory_response
     from utils.context_fetcher import get_market_context
@@ -166,7 +179,7 @@ async def query(request: QueryRequest):
     market_context = get_market_context()
 
     response = generate_advisory_response(
-        user_query=request.query,
+        user_query=request_body.query,
         categories=cached.get("categories", {}),
         inflation_analysis=cached.get("inflation_analysis", {}),
         tax_breakdown=cached.get("tax_breakdown", {}),
@@ -179,8 +192,8 @@ async def query(request: QueryRequest):
     )
 
     return {
-        "session_id": request.session_id,
-        "query": request.query,
+        "session_id": request_body.session_id,
+        "query": request_body.query,
         "response": response
     }
 
