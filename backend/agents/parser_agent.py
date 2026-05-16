@@ -7,6 +7,8 @@ from utils.gemini import generate_vision_with_retry, get_embedding
 from dotenv import load_dotenv
 import uuid as uuid_lib
 
+from utils.sanitizer import sanitize_transactions
+
 logger = setup_logger("parser_agent")
 load_dotenv()
 
@@ -70,6 +72,11 @@ def parse_pdf(file_path: str) -> dict:
         raw_text = raw_text.strip()
 
         result = json.loads(raw_text)
+        
+        if "islemler" in result:
+            result["islemler"] = sanitize_transactions(result["islemler"])
+            logger.info("İşlemler sanitize edildi")
+        
         logger.info(f"{len(result.get('islemler', []))} işlem parse edildi")
         return result
 

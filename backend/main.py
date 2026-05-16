@@ -12,6 +12,7 @@ import shutil, os, uuid, sys, json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from graph.workflow import graph, FinSightState
 from utils.logger import setup_logger
+from utils.sanitizer import sanitize_query
 
 logger = setup_logger("api")
 
@@ -171,7 +172,8 @@ async def query(request: Request, request_body: QueryRequest):
     if not cached:
         raise HTTPException(400, "Önce /analyze çağırın.")
 
-    logger.info(f"Sorgu: {request_body.query[:50]} — session: {request_body.session_id[:8]}")
+    clean_query = sanitize_query(request_body.query)  # ← bu satır eklendi
+    logger.info(f"Sorgu: {clean_query[:50]} — session: {request_body.session_id[:8]}")
 
     from agents.advisory_agent import generate_advisory_response
     from utils.context_fetcher import get_market_context
@@ -179,7 +181,7 @@ async def query(request: Request, request_body: QueryRequest):
     market_context = get_market_context()
 
     response = generate_advisory_response(
-        user_query=request_body.query,
+        user_query=clean_query,  # ← request_body.query yerine clean_query
         categories=cached.get("categories", {}),
         inflation_analysis=cached.get("inflation_analysis", {}),
         tax_breakdown=cached.get("tax_breakdown", {}),
@@ -193,7 +195,7 @@ async def query(request: Request, request_body: QueryRequest):
 
     return {
         "session_id": request_body.session_id,
-        "query": request_body.query,
+        "query": clean_query,  # ← clean_query döndür
         "response": response
     }
 

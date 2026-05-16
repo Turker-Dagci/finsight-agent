@@ -77,3 +77,12 @@
 2026-05-14 20:08:25 | advisory_agent       | INFO     | Döviz kalkanı hesaplanıyor
 2026-05-14 20:08:25 | advisory_agent       | INFO     | Proaktif uyarılar üretiliyor
 2026-05-14 20:08:25 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor
+2026-05-14 20:56:02 | sanitizer            | WARNING  | Şüpheli içerik tespit edildi [query]: 'ignore\s+previous\s+instructio'
+2026-05-14 20:56:02 | sanitizer            | WARNING  | Şüpheli içerik tespit edildi [query]: 'system\s+prompt'
+2026-05-14 20:56:02 | sanitizer            | INFO     | Sanitize tamamlandı [query]: 53 → 32 karakter
+2026-05-14 20:56:02 | sanitizer            | WARNING  | Şüpheli içerik tespit edildi [query]: 'tüm\s+talimatları\s+unut'
+2026-05-14 20:56:02 | sanitizer            | INFO     | Sanitize tamamlandı [query]: 46 → 36 karakter
+2026-05-14 20:56:02 | sanitizer            | WARNING  | Şüpheli içerik tespit edildi [query]: '<\s*script'
+2026-05-14 20:56:02 | sanitizer            | INFO     | Sanitize tamamlandı [query]: 29 → 32 karakter
+2026-05-14 20:56:02 | sanitizer            | WARNING  | Şüpheli içerik tespit edildi [query]: 'SELECT\s+\*\s+FROM'
+2026-05-14 20:56:02 | sanitizer            | INFO     | Sanitize tamamlandı [query]: 29 → 26 karakter
