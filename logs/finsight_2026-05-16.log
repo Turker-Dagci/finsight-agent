@@ -36,3 +36,6 @@
 2026-05-16 14:04:37 | nlp_parser           | INFO     | NLP parse tamamlandı: Maaş ödemesi — 42000.0 TL — maas
 2026-05-16 14:04:37 | nlp_parser           | INFO     | NLP parse başladı: 'Geçen hafta doktora 600 TL ödedim'
 2026-05-16 14:04:40 | nlp_parser           | INFO     | NLP parse tamamlandı: Doktor ziyareti — 600.0 TL — saglik
+2026-05-16 14:06:18 | scenario_planner     | INFO     | Senaryo simüle edildi: 'Yurt dışı tatil' — 15,000 TL — etki: kritik
+2026-05-16 14:06:18 | scenario_planner     | INFO     | Senaryo simüle edildi: 'Yeni telefon' — 25,000 TL — etki: kritik
+2026-05-16 14:06:18 | scenario_planner     | INFO     | Senaryo simüle edildi: 'Aylık spor salonu + takviye' — 2,000 TL — etki: orta
