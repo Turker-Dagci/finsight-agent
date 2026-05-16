@@ -1,5 +1,8 @@
 import streamlit as st
 import requests
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
 
 API_URL = "http://localhost:8000"
 
@@ -9,42 +12,257 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+    .main { background-color: #0f1117; }
+    .metric-label { font-size: 13px !important; color: #8b9dc3 !important; }
+    .metric-value { font-size: 24px !important; font-weight: 600 !important; }
+    .awareness-box {
+        background: linear-gradient(135deg, #1a2744, #1e3a5f);
+        border-left: 4px solid #2e75b6;
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin: 12px 0;
+        font-size: 14px;
+        color: #c9d8f0;
+    }
+    .score-label {
+        font-size: 13px;
+        color: #8b9dc3;
+        margin-bottom: 4px;
+    }
+    .stButton button {
+        background: linear-gradient(135deg, #1e3a5f, #2e75b6);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ── Sidebar ───────────────────────────────────────────────────
 with st.sidebar:
     st.title("💰 FinSight Agent")
     st.caption("Çok-Ajanlı KOBİ Finansal Analiz Sistemi")
     st.divider()
-    page = st.radio("Sayfa", ["📤 Ekstre Yükle", "💬 Analiz & Sohbet"])
+    page = st.radio(
+        "Sayfa",
+        ["📤 Ekstre Yükle", "📊 Analiz", "💬 Sohbet",
+         "🎯 Profil & Hedefler", "🔮 Senaryo", "✏️ İşlem Ekle"]
+    )
     st.divider()
-    st.info("Gemini 2.5 · LangGraph · Qdrant")
+    if "session_id" in st.session_state:
+        st.success("Aktif oturum")
+        st.caption(f"ID: {st.session_state['session_id'][:8]}...")
+    st.divider()
+    st.caption("Gemini 2.5 · LangGraph · Qdrant")
+    st.caption("FastAPI · Streamlit")
 
+# ── Sayfa 1: Yükleme ─────────────────────────────────────────
 if page == "📤 Ekstre Yükle":
-    st.title("Banka Ekstresi veya Fatura Yükle")
+    st.title("📤 Banka Ekstresi Yükle")
+    st.caption("PDF veya görüntü formatında banka ekstresi yükleyin.")
 
     uploaded = st.file_uploader(
-        "PDF veya görüntü formatında yükleyin",
+        "Dosya seçin",
         type=["pdf", "png", "jpg", "jpeg"]
     )
 
     if uploaded:
-        st.success(f"Dosya seçildi: {uploaded.name}")
+        st.success(f"✅ {uploaded.name}")
+        query = st.text_input(
+            "Analiz sorusu",
+            value="Bu ay nasıl harcadım ve önümüzdeki ay ne yapmalıyım?"
+        )
 
-        if st.button("Analizi Başlat", type="primary"):
-            with st.spinner("Yükleniyor..."):
-                try:
-                    files = {"file": (uploaded.name, uploaded.getvalue())}
-                    response = requests.post(f"{API_URL}/upload", files=files)
-                    if response.status_code == 200:
-                        result = response.json()
-                        st.session_state["file_id"] = result["file_id"]
-                        st.success("Yükleme başarılı!")
-                        st.json(result)
-                    else:
-                        st.error(f"Hata: {response.text}")
-                except Exception as e:
-                    st.error(f"API bağlantı hatası: {e}")
+        if st.button("🚀 Analizi Başlat", type="primary"):
+            with st.spinner("📤 Dosya yükleniyor..."):
+                files = {"file": (uploaded.name, uploaded.getvalue())}
+                upload_resp = requests.post(f"{API_URL}/upload", files=files)
 
-elif page == "💬 Analiz & Sohbet":
-    st.title("Finansal Analizin")
+                if upload_resp.status_code != 200:
+                    st.error(f"Yükleme hatası: {upload_resp.text}")
+                    st.stop()
+
+                session_id = upload_resp.json()["session_id"]
+                st.session_state["session_id"] = session_id
+
+            with st.spinner("🤖 Ajanlar analiz ediyor... (30-60 saniye)"):
+                analyze_resp = requests.post(
+                    f"{API_URL}/analyze",
+                    params={"session_id": session_id, "query": query},
+                    timeout=180
+                )
+
+                if analyze_resp.status_code != 200:
+                    st.error(f"Analiz hatası: {analyze_resp.text}")
+                    st.stop()
+
+                result = analyze_resp.json()
+                st.session_state["result"] = result
+
+            st.success("✅ Analiz tamamlandı!")
+            st.balloons()
+            st.info("Sol menüden 'Analiz' sayfasına geçin.")
+
+# ── Sayfa 2: Analiz ──────────────────────────────────────────
+elif page == "📊 Analiz":
+    st.title("📊 Finansal Analiz")
+
+    if "result" not in st.session_state:
+        st.warning("Henüz analiz yapılmadı. Önce ekstre yükleyin.")
+        st.stop()
+
+    result = st.session_state["result"]
+    summary = result.get("parsed_summary", {})
+    categories = result.get("categories", {})
+    health = result.get("health_score", {})
+    awareness = result.get("awareness_message", "")
+
+    # Bilinçlendirme mesajı
+    if awareness:
+        st.markdown(
+            f'<div class="awareness-box">{awareness}</div>',
+            unsafe_allow_html=True
+        )
+
+    # Özet metrikler
+    gelir = summary.get("toplam_gelir", 0)
+    gider = summary.get("toplam_gider", 0)
+    net = gelir - gider
+    vergi = result.get("tax_total", 0)
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Toplam Gelir", f"{gelir:,.0f} TL")
+    col2.metric("Toplam Gider", f"{gider:,.0f} TL")
+    col3.metric("Net Tasarruf", f"{net:,.0f} TL",
+                delta=f"%{net/gelir*100:.1f}" if gelir > 0 else None)
+    col4.metric("Gizli Vergi", f"{vergi:,.0f} TL")
+
+    st.divider()
+
+    # Sağlık skoru + kategoriler
+    col_left, col_right = st.columns([1, 2])
+
+    with col_left:
+        st.subheader("🏥 Finansal Sağlık")
+        if health:
+            skor = health.get("toplam_skor", 0)
+            seviye = health.get("seviye", "")
+            mesaj = health.get("mesaj", "")
+
+            # Gauge chart
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=skor,
+                domain={"x": [0, 1], "y": [0, 1]},
+                title={"text": seviye, "font": {"size": 16}},
+                gauge={
+                    "axis": {"range": [0, 100]},
+                    "bar": {"color": "#2e75b6"},
+                    "steps": [
+                        {"range": [0, 30], "color": "#3d1a1a"},
+                        {"range": [30, 50], "color": "#3d2e1a"},
+                        {"range": [50, 70], "color": "#2e3d1a"},
+                        {"range": [70, 85], "color": "#1a3d2e"},
+                        {"range": [85, 100], "color": "#1a2e3d"},
+                    ],
+                    "threshold": {
+                        "line": {"color": "#ffffff", "width": 2},
+                        "thickness": 0.75,
+                        "value": skor
+                    }
+                }
+            ))
+            fig_gauge.update_layout(
+                height=220,
+                margin=dict(t=30, b=10, l=20, r=20),
+                paper_bgcolor="rgba(0,0,0,0)",
+                font_color="white"
+            )
+            st.plotly_chart(fig_gauge, use_container_width=True)
+            st.caption(mesaj)
+
+            # Bileşenler
+            bilesenler = health.get("bilesenler", {})
+            detay = health.get("detay", {})
+            for k, v in bilesenler.items():
+                st.caption(f"{k.capitalize()}: {v} puan — {detay.get(k, '')}")
+
+    with col_right:
+        st.subheader("📊 Harcama Dağılımı")
+        if categories:
+            df = pd.DataFrame(
+                list(categories.items()),
+                columns=["Kategori", "Tutar (TL)"]
+            ).sort_values("Tutar (TL)", ascending=False)
+
+            fig = px.bar(
+                df, x="Kategori", y="Tutar (TL)",
+                color="Tutar (TL)",
+                color_continuous_scale="Blues",
+            )
+            fig.update_layout(
+                height=300,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font_color="white",
+                showlegend=False,
+                margin=dict(t=10, b=40, l=40, r=10)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # Döviz kalkanı
+    fx = result.get("fx_shield", {})
+    if fx:
+        st.subheader("💱 Döviz Kalkanı")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Aylık Gider", f"{fx.get('aylik_gider_tl', 0):,.0f} TL")
+        c2.metric("USD Karşılığı", f"{fx.get('aylik_gider_usd', 0):,.0f} $")
+        c3.metric("EUR Karşılığı", f"{fx.get('aylik_gider_eur', 0):,.0f} €")
+
+    st.divider()
+
+    # Uyarılar ve anomaliler
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.subheader("⚠️ Proaktif Uyarılar")
+        alerts = result.get("proactive_alerts", [])
+        if alerts:
+            for a in alerts:
+                st.warning(a)
+        else:
+            st.success("Kritik uyarı yok.")
+
+    with col_b:
+        st.subheader("🔍 Anomaliler")
+        anomalies = result.get("anomalies", [])
+        if anomalies:
+            for a in anomalies:
+                st.error(a)
+        else:
+            st.success("Anomali tespit edilmedi.")
+
+    st.divider()
+
+    # Gemini tavsiyesi
+    st.subheader("🤖 FinSight Tavsiyesi")
+    final = result.get("final_response", "")
+    if final:
+        st.markdown(final)
+    else:
+        st.info("Tavsiye üretilirken hata oluştu. Lütfen tekrar deneyin.")
+
+# ── Sayfa 3: Sohbet ──────────────────────────────────────────
+elif page == "💬 Sohbet":
+    st.title("💬 FinSight ile Sohbet")
+
+    if "session_id" not in st.session_state:
+        st.warning("Önce ekstre yükleyin.")
+        st.stop()
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -53,22 +271,294 @@ elif page == "💬 Analiz & Sohbet":
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Sor: 'Bu ay en çok neye harcadım?'"):
+    if prompt := st.chat_input(
+        "Sor: 'Bu ay aboneliklerimi azaltırsam ne tasarruf ederim?'"
+    ):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("Ajanlar analiz ediyor..."):
-                try:
-                    response = requests.post(
-                        f"{API_URL}/query",
-                        json={"query": prompt}
-                    )
-                    answer = response.json().get("response", "Yanıt alınamadı.")
-                except:
-                    answer = "API bağlantısı kurulamadı. Backend çalışıyor mu?"
-                st.markdown(answer)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": answer}
+            with st.spinner("Analiz ediliyor..."):
+                resp = requests.post(
+                    f"{API_URL}/query",
+                    json={
+                        "session_id": st.session_state["session_id"],
+                        "query": prompt
+                    },
+                    timeout=60
                 )
+                answer = resp.json().get("response", "Yanıt alınamadı.")
+            st.markdown(answer)
+            st.session_state.messages.append(
+                {"role": "assistant", "content": answer}
+            )
+
+# ── Sayfa 4: Profil & Hedefler ────────────────────────────────
+elif page == "🎯 Profil & Hedefler":
+    st.title("🎯 Finansal Profil & Hedefler")
+
+    if "session_id" not in st.session_state:
+        st.warning("Önce ekstre yükleyin.")
+        st.stop()
+
+    st.subheader("Profiliniz")
+    col1, col2 = st.columns(2)
+
+    with col1:
+        gelir_kaynak = st.selectbox(
+            "Gelir Kaynağı",
+            ["Maaş", "Serbest Meslek", "Emekli", "Kira Geliri", "Diğer"]
+        )
+        aylik_gelir = st.number_input(
+            "Aylık Net Gelir (TL)", min_value=0, value=0, step=500
+        )
+        ek_gelir = st.text_input("Ek Gelir", placeholder="Freelance, kira vb.")
+
+    with col2:
+        borclar = st.text_input(
+            "Toplam Borç", placeholder="50.000 TL kredi vb."
+        )
+        yatirimlar = st.multiselect(
+            "Mevcut Yatırımlar",
+            ["Döviz", "Altın", "Hisse Senedi", "Mevduat", "Kripto", "Yok"]
+        )
+
+    st.subheader("Finansal Hedefleriniz")
+    st.caption("En fazla 3 hedef ekleyebilirsiniz.")
+
+    hedefler = []
+    for i in range(3):
+        with st.expander(f"Hedef {i+1}", expanded=(i == 0)):
+            ad = st.text_input(
+                "Hedef adı",
+                placeholder="Yurt dışı tatil, acil fon, yeni araba...",
+                key=f"hedef_ad_{i}"
+            )
+            col_h1, col_h2, col_h3 = st.columns(3)
+            tutar = col_h1.number_input(
+                "Hedef Tutar (TL)", min_value=0, value=0, step=1000,
+                key=f"hedef_tutar_{i}"
+            )
+            butce = col_h2.number_input(
+                "Aylık Bütçe (TL)", min_value=0, value=0, step=500,
+                key=f"hedef_butce_{i}"
+            )
+            sure = col_h3.number_input(
+                "Süre (ay)", min_value=1, value=12, step=1,
+                key=f"hedef_sure_{i}"
+            )
+            if ad:
+                hedefler.append({
+                    "ad": ad,
+                    "hedef_tutar": tutar,
+                    "aylik_butce": butce,
+                    "sure_ay": sure
+                })
+
+    if st.button("💾 Profili Kaydet ve Analiz Et", type="primary"):
+        with st.spinner("Profil kaydediliyor..."):
+            resp = requests.post(
+                f"{API_URL}/profile",
+                json={
+                    "session_id": st.session_state["session_id"],
+                    "gelir_kaynak": gelir_kaynak,
+                    "aylik_gelir": aylik_gelir,
+                    "ek_gelir": ek_gelir or "Yok",
+                    "borclar": borclar or "Belirtilmedi",
+                    "yatirimlar": ", ".join(yatirimlar) if yatirimlar else "Belirtilmedi",
+                    "hedefler": hedefler
+                }
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                st.session_state["budget_plan"] = data.get("budget_plan", {})
+                st.success("✅ Profil kaydedildi!")
+
+                plan = data.get("budget_plan", {})
+                st.subheader("Bütçe Analizi")
+
+                col_p1, col_p2, col_p3 = st.columns(3)
+                col_p1.metric(
+                    "Mevcut Tasarruf",
+                    f"{plan.get('mevcut_tasarruf', 0):,.0f} TL/ay"
+                )
+                ideal = plan.get("ideal_dagilim", {})
+                col_p2.metric(
+                    "İdeal Tasarruf (20%)",
+                    f"{ideal.get('tasarruf_20', 0):,.0f} TL/ay"
+                )
+                col_p3.metric(
+                    "Genel Durum",
+                    plan.get("genel_durum", "").capitalize()
+                )
+
+                # Hedef analizi
+                hedef_analizi = plan.get("hedef_analizi", [])
+                if hedef_analizi:
+                    st.subheader("Hedef İlerleme")
+                    for h in hedef_analizi:
+                        if h.get("hedef_tutar") and h.get("gercekci_sure_ay"):
+                            ilerleme = min(
+                                plan.get("mevcut_tasarruf", 0) /
+                                h["hedef_tutar"], 1.0
+                            )
+                            st.caption(f"🎯 {h['ad']}")
+                            st.progress(ilerleme)
+                            st.caption(
+                                f"Mevcut hızla {h['gercekci_sure_ay']} ayda ulaşılır "
+                                f"(hedef: {h['sure_ay']} ay)"
+                            )
+            else:
+                st.error(f"Hata: {resp.text}")
+
+# ── Sayfa 5: Senaryo ─────────────────────────────────────────
+elif page == "🔮 Senaryo":
+    st.title("🔮 Ya Şöyle Olursa?")
+    st.caption("Bir harcama senaryosu simüle edin.")
+
+    if "session_id" not in st.session_state:
+        st.warning("Önce ekstre yükleyin.")
+        st.stop()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        senaryo_ad = st.text_input(
+            "Senaryo",
+            placeholder="Yurt dışı tatil, yeni telefon, spor salonu..."
+        )
+        senaryo_tutar = st.number_input(
+            "Harcama Tutarı (TL)", min_value=0, value=0, step=500
+        )
+
+    with col2:
+        hedef_tutar = st.number_input(
+            "Birikim Hedefi (TL) — opsiyonel",
+            min_value=0, value=0, step=1000
+        )
+        sure_ay = st.number_input(
+            "Hedef Süresi (ay)", min_value=1, value=12, step=1
+        )
+
+    if st.button("🔮 Simüle Et", type="primary"):
+        if not senaryo_ad or senaryo_tutar == 0:
+            st.warning("Senaryo adı ve tutar giriniz.")
+        else:
+            with st.spinner("Simülasyon hesaplanıyor..."):
+                resp = requests.post(
+                    f"{API_URL}/scenario",
+                    json={
+                        "session_id": st.session_state["session_id"],
+                        "senaryo_tutar": senaryo_tutar,
+                        "senaryo_aciklama": senaryo_ad,
+                        "hedef_tutar": hedef_tutar if hedef_tutar > 0 else None,
+                        "sure_ay": sure_ay
+                    }
+                )
+
+                if resp.status_code == 200:
+                    data = resp.json()
+
+                    etki = data.get("etki_seviyesi", "")
+                    renk = {
+                        "minimal": "success",
+                        "düşük": "success",
+                        "orta": "warning",
+                        "yüksek": "warning",
+                        "kritik": "error"
+                    }.get(etki, "info")
+
+                    getattr(st, renk)(
+                        f"Etki Seviyesi: {etki.upper()} — {data.get('tavsiye', '')}"
+                    )
+
+                    col_s1, col_s2, col_s3 = st.columns(3)
+                    mevcut = data.get("mevcut_durum", {})
+                    senaryo = data.get("senaryo_sonrasi", {})
+
+                    col_s1.metric(
+                        "Mevcut Aylık Tasarruf",
+                        f"{mevcut.get('aylik_tasarruf', 0):,.0f} TL"
+                    )
+                    col_s2.metric(
+                        "Senaryo Sonrası",
+                        f"{senaryo.get('aylik_tasarruf', 0):,.0f} TL",
+                        delta=f"-{senaryo.get('fark', 0):,.0f} TL yıllık"
+                    )
+                    col_s3.metric(
+                        "Yıllık Fark",
+                        f"{senaryo.get('fark', 0):,.0f} TL"
+                    )
+
+                    h = data.get("hedef_analizi")
+                    if h and h.get("mevcut_sure_ay"):
+                        st.info(
+                            f"🎯 {h['hedef_tutar']:,.0f} TL hedefine:\n\n"
+                            f"Mevcut hızla **{h['mevcut_sure_ay']} ayda** ulaşırsın. "
+                            f"Bu senaryo ile **{h.get('senaryo_sure_ay', '?')} aya** çıkar."
+                        )
+                else:
+                    st.error(f"Hata: {resp.text}")
+
+# ── Sayfa 6: İşlem Ekle ──────────────────────────────────────
+elif page == "✏️ İşlem Ekle":
+    st.title("✏️ Doğal Dil ile İşlem Ekle")
+    st.caption("PDF olmadan da harcama girebilirsiniz.")
+
+    if "session_id" not in st.session_state:
+        st.warning("Önce ekstre yükleyin.")
+        st.stop()
+
+    st.subheader("Harcamanızı yazın")
+    ornek = st.selectbox(
+        "Örnek seçin veya kendiniz yazın:",
+        [
+            "Örnek seçin...",
+            "Dün Kadıköy'de kafede 450 TL ödedim",
+            "Bu sabah Migros'tan 380 TL market yaptım",
+            "Shell'den 1200 TL benzin aldım",
+            "Netflix aboneliği 349 TL çekti",
+            "Doktora 600 TL ödedim",
+        ]
+    )
+
+    text = st.text_area(
+        "İşlem açıklaması",
+        value=ornek if ornek != "Örnek seçin..." else "",
+        height=100,
+        placeholder="Örn: Dün akşam Kadıköy'de bir kafede 450 TL ödedim"
+    )
+
+    if st.button("✅ İşlemi Ekle", type="primary"):
+        if not text.strip():
+            st.warning("Lütfen bir işlem açıklaması girin.")
+        else:
+            with st.spinner("Parse ediliyor..."):
+                resp = requests.post(
+                    f"{API_URL}/nlp-transaction",
+                    json={
+                        "session_id": st.session_state["session_id"],
+                        "text": text
+                    }
+                )
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    parsed = data.get("parsed", {})
+                    saved = data.get("saved", False)
+
+                    if parsed:
+                        col_r1, col_r2, col_r3, col_r4 = st.columns(4)
+                        col_r1.metric("Tarih", parsed.get("tarih", "-"))
+                        col_r2.metric("Tutar", f"{parsed.get('tutar', 0):,.0f} TL")
+                        col_r3.metric("Kategori", parsed.get("kategori", "-"))
+                        col_r4.metric("Güven", parsed.get("guven", "-"))
+
+                        st.success(
+                            f"✅ '{parsed.get('aciklama')}' işlemi "
+                            f"{'kaydedildi.' if saved else 'parse edildi.'}"
+                        )
+                else:
+                    st.error(f"Hata: {resp.text}")
