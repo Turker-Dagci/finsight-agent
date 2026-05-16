@@ -23,3 +23,4 @@
 2026-05-16 13:51:02 | advisory_agent       | INFO     | Proaktif uyarılar üretiliyor
 2026-05-16 13:51:02 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor
 2026-05-16 13:51:13 | health_score         | INFO     | Finansal sağlık skoru: 51/100 — Orta
+2026-05-16 14:03:00 | financial_profile    | INFO     | Bütçe planı hazırlandı: 2 hedef
