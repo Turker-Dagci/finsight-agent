@@ -14,6 +14,9 @@ from graph.workflow import graph, FinSightState
 from utils.logger import setup_logger
 from utils.sanitizer import sanitize_query
 
+from utils.financial_profile import calculate_budget_plan, build_profile_context
+from utils.scenario_planner import simulate_scenario
+
 logger = setup_logger("api")
 
 limiter = Limiter(key_func=get_remote_address)
@@ -201,6 +204,107 @@ async def query(request: Request, request_body: QueryRequest):
         "session_id": request_body.session_id,
         "query": clean_query,  # ← clean_query döndür
         "response": response
+    }
+
+class GoalRequest(BaseModel):
+    ad: str
+    hedef_tutar: Optional[float] = None
+    aylik_butce: Optional[float] = None
+    sure_ay: Optional[int] = 12
+
+class FinancialProfileRequest(BaseModel):
+    session_id: str
+    gelir_kaynak: Optional[str] = "Maaş"
+    aylik_gelir: Optional[float] = 0
+    ek_gelir: Optional[str] = "Yok"
+    borclar: Optional[str] = "Belirtilmedi"
+    yatirimlar: Optional[str] = "Belirtilmedi"
+    hedefler: Optional[list] = []
+
+class ScenarioRequest(BaseModel):
+    session_id: str
+    senaryo_tutar: float
+    senaryo_aciklama: str
+    hedef_tutar: Optional[float] = None
+    sure_ay: Optional[int] = 12
+
+class NLPRequest(BaseModel):
+    session_id: str
+    text: str
+
+@app.post("/profile")
+@limiter.limit("10/minute")
+async def save_profile(request: Request, profile_req: FinancialProfileRequest):
+    if profile_req.session_id not in session_store:
+        raise HTTPException(404, "Session bulunamadı.")
+
+    cached = session_store[profile_req.session_id].get("result", {})
+
+    profile = {
+        "gelir_kaynak": profile_req.gelir_kaynak,
+        "aylik_gelir": profile_req.aylik_gelir,
+        "ek_gelir": profile_req.ek_gelir,
+        "borclar": profile_req.borclar,
+        "yatirimlar": profile_req.yatirimlar,
+    }
+
+    budget_plan = calculate_budget_plan(
+        profile=profile,
+        categories=cached.get("categories", {}),
+        parsed_summary=cached.get("parsed_summary", {}),
+        hedefler=profile_req.hedefler
+    )
+
+    session_store[profile_req.session_id]["profile"] = profile
+    session_store[profile_req.session_id]["budget_plan"] = budget_plan
+    save_sessions(session_store)
+
+    logger.info(f"Profil kaydedildi — session: {profile_req.session_id[:8]}")
+
+    return {
+        "session_id": profile_req.session_id,
+        "profile": profile,
+        "budget_plan": budget_plan,
+    }
+
+@app.post("/scenario")
+@limiter.limit("10/minute")
+async def scenario(request: Request, scenario_req: ScenarioRequest):
+    if scenario_req.session_id not in session_store:
+        raise HTTPException(404, "Session bulunamadı.")
+
+    cached = session_store[scenario_req.session_id].get("result", {})
+    parsed_summary = cached.get("parsed_summary", {})
+
+    if not parsed_summary:
+        raise HTTPException(400, "Önce /analyze çağırın.")
+
+    result = simulate_scenario(
+        senaryo_tutar=scenario_req.senaryo_tutar,
+        senaryo_aciklama=scenario_req.senaryo_aciklama,
+        parsed_summary=parsed_summary,
+        hedef_tutar=scenario_req.hedef_tutar,
+        sure_ay=scenario_req.sure_ay
+    )
+
+    logger.info(f"Senaryo simüle edildi — session: {scenario_req.session_id[:8]}")
+    return result
+
+@app.post("/nlp-transaction")
+@limiter.limit("20/minute")
+async def nlp_transaction(request: Request, nlp_req: NLPRequest):
+    if nlp_req.session_id not in session_store:
+        raise HTTPException(404, "Session bulunamadı.")
+
+    from agents.nlp_parser import parse_natural_language, save_nlp_transaction
+
+    parsed = parse_natural_language(nlp_req.text)
+    saved = save_nlp_transaction(parsed, nlp_req.session_id)
+
+    return {
+        "session_id": nlp_req.session_id,
+        "parsed": parsed,
+        "saved": saved
     }
 
 @app.get("/session/{session_id}")
