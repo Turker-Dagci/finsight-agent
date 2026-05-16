@@ -24,3 +24,15 @@
 2026-05-16 13:51:02 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor
 2026-05-16 13:51:13 | health_score         | INFO     | Finansal sağlık skoru: 51/100 — Orta
 2026-05-16 14:03:00 | financial_profile    | INFO     | Bütçe planı hazırlandı: 2 hedef
+2026-05-16 14:04:21 | nlp_parser           | INFO     | NLP parse başladı: 'Dün Kadıköy'de bir kafede 450 TL ödedim'
+2026-05-16 14:04:24 | nlp_parser           | INFO     | NLP parse tamamlandı: Kafe harcaması — 450.0 TL — eglence
+2026-05-16 14:04:24 | nlp_parser           | INFO     | NLP parse başladı: 'Bu sabah Migros'tan 380 TL market alışverişi yaptı'
+2026-05-16 14:04:27 | nlp_parser           | INFO     | NLP parse tamamlandı: market alışverişi — 380.0 TL — gida
+2026-05-16 14:04:27 | nlp_parser           | INFO     | NLP parse başladı: 'Shell'den 1200 TL benzin aldım'
+2026-05-16 14:04:31 | nlp_parser           | INFO     | NLP parse tamamlandı: Benzin alımı — 1200.0 TL — ulasim
+2026-05-16 14:04:31 | nlp_parser           | INFO     | NLP parse başladı: 'Netflix aboneliği 349 TL çekti'
+2026-05-16 14:04:34 | nlp_parser           | INFO     | NLP parse tamamlandı: Netflix aboneliği — 349.0 TL — eglence
+2026-05-16 14:04:34 | nlp_parser           | INFO     | NLP parse başladı: 'Bugün 42000 TL maaşım yattı'
+2026-05-16 14:04:37 | nlp_parser           | INFO     | NLP parse tamamlandı: Maaş ödemesi — 42000.0 TL — maas
+2026-05-16 14:04:37 | nlp_parser           | INFO     | NLP parse başladı: 'Geçen hafta doktora 600 TL ödedim'
+2026-05-16 14:04:40 | nlp_parser           | INFO     | NLP parse tamamlandı: Doktor ziyareti — 600.0 TL — saglik
