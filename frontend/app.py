@@ -242,6 +242,25 @@ elif page == "📊 Analiz":
                 f"{renk} **{t['tarih']}** — {t['aciklama']} "
                 f"— **{t['tutar']:,.0f} TL**"
             )
+    # Nakit akış tahmini
+    cashflow = result.get("cashflow_forecast", {})
+    if cashflow:
+        st.divider()
+        st.subheader("💵 30 Günlük Nakit Akış Tahmini")
+
+        renk_fn = {
+        "success": st.success,
+        "warning": st.warning,
+        "error": st.error
+        }.get(cashflow.get("risk_renk", "warning"), st.info)
+
+        renk_fn(cashflow.get("risk_mesaj", ""))
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Mevcut Nakit", f"{cashflow.get('mevcut_nakit', 0):,.0f} TL")
+        c2.metric("Ay Sonu Tahmini", f"{cashflow.get('ay_sonu_tahmini', 0):,.0f} TL")
+        c3.metric("Günlük Limit", f"{cashflow.get('gunluk_guvenli_limit', 0):,.0f} TL/gün")
+        c4.metric("Kalan Gün", f"{cashflow.get('ayin_kalan_gunu', 0)} gün")
 
     # Uyarılar ve anomaliler
     col_a, col_b = st.columns(2)

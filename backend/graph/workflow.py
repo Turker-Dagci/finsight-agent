@@ -15,8 +15,10 @@ from utils.health_score import calculate_health_score
 from utils.awareness import get_awareness_message
 from utils.monthly_summary import generate_monthly_summary
 from utils.predicted_expenses import predict_upcoming_expenses
+from utils.cashflow_forecast import forecast_cashflow
 
 class FinSightState(TypedDict):
+    cashflow_forecast: Optional[dict]
     predicted_expenses: Optional[dict]
     monthly_summary: Optional[str]
     behavioral_insights: Optional[List[str]]
@@ -115,7 +117,6 @@ def advisory_node(state: FinSightState) -> dict:
             health_score=health.get("toplam_skor")
         )
 
-        # Aylık özet ekle
         monthly_summary = generate_monthly_summary(
             categories=state.get("categories", {}),
             parsed_summary=state.get("parsed_summary", {}),
@@ -123,6 +124,18 @@ def advisory_node(state: FinSightState) -> dict:
             anomalies=state.get("anomalies", []),
             subscriptions=state.get("subscriptions", []),
             health_score=health
+        )
+
+        predicted = predict_upcoming_expenses(
+            transactions=state.get("transactions", []),
+            categories=state.get("categories", {}),
+            subscriptions=state.get("subscriptions", [])
+        )
+
+        cashflow = forecast_cashflow(
+            parsed_summary=state.get("parsed_summary", {}),
+            categories=state.get("categories", {}),
+            predicted_expenses=predicted
         )
 
         return {
@@ -133,6 +146,7 @@ def advisory_node(state: FinSightState) -> dict:
             "awareness_message": awareness,
             "monthly_summary": monthly_summary,
             "predicted_expenses": predicted,
+            "cashflow_forecast": cashflow,
             "current_step": "done"
         }
     except Exception as e:

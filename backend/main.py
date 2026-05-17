@@ -151,6 +151,7 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
         "awareness_message": result.get("awareness_message"),
         "behavioral_insights": result.get("behavioral_insights"),
         "predicted_expenses": result.get("predicted_expenses"),
+        "cashflow_forecast": result.get("cashflow_forecast"),
     }
     session_store[session_id]["status"] = "analyzed"
     save_sessions(session_store)
@@ -173,6 +174,7 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
         "final_response": result.get("final_response"),
         "behavioral_insights": result.get("behavioral_insights"),
         "predicted_expenses": result.get("predicted_expenses"),
+        "cashflow_forecast": result.get("cashflow_forecast"),
     }
 
 @app.post("/query")
