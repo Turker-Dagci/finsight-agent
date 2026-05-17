@@ -119,6 +119,9 @@ elif page == "📊 Analiz":
     categories = result.get("categories", {})
     health = result.get("health_score", {})
     awareness = result.get("awareness_message", "")
+    monthly = result.get("monthly_summary", "")
+    if monthly:
+        st.info(f"📅 **Bu Ayın Özeti:** {monthly}")
 
     # Bilinçlendirme mesajı
     if awareness:
@@ -128,10 +131,10 @@ elif page == "📊 Analiz":
         )
 
     # Özet metrikler
-    gelir = summary.get("toplam_gelir", 0)
-    gider = summary.get("toplam_gider", 0)
+    gelir = summary.get("toplam_gelir") or 0
+    gider = summary.get("toplam_gider") or 0
     net = gelir - gider
-    vergi = result.get("tax_total", 0)
+    vergi = result.get("tax_total") or 0
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Toplam Gelir", f"{gelir:,.0f} TL")
@@ -251,10 +254,14 @@ elif page == "📊 Analiz":
     # Gemini tavsiyesi
     st.subheader("🤖 FinSight Tavsiyesi")
     final = result.get("final_response", "")
-    if final:
+    if final and final != "Analiz geçici olarak kullanılamıyor. Lütfen tekrar deneyin.":
         st.markdown(final)
+    elif final:
+        st.warning(final)
+    if st.button("🔄 Tavsiye Yenile"):
+        st.info("Sohbet sayfasından 'Genel analiz yap' yazarak yeniden tavsiye alabilirsiniz.")
     else:
-        st.info("Tavsiye üretilirken hata oluştu. Lütfen tekrar deneyin.")
+        st.info("Tavsiye almak için Sohbet sayfasına gidin ve bir soru sorun.")
 
 # ── Sayfa 3: Sohbet ──────────────────────────────────────────
 elif page == "💬 Sohbet":
@@ -379,20 +386,24 @@ elif page == "🎯 Profil & Hedefler":
                 plan = data.get("budget_plan", {})
                 st.subheader("Bütçe Analizi")
 
-                col_p1, col_p2, col_p3 = st.columns(3)
+                col_p1, col_p2, col_p3, col_p4 = st.columns(4)
                 col_p1.metric(
-                    "Mevcut Tasarruf",
+                "Mevcut Tasarruf",
                     f"{plan.get('mevcut_tasarruf', 0):,.0f} TL/ay"
-                )
+                    )
                 ideal = plan.get("ideal_dagilim", {})
                 col_p2.metric(
-                    "İdeal Tasarruf (20%)",
+                "İdeal Tasarruf (20%)",
                     f"{ideal.get('tasarruf_20', 0):,.0f} TL/ay"
-                )
+                    )
                 col_p3.metric(
-                    "Genel Durum",
-                    plan.get("genel_durum", "").capitalize()
-                )
+                "Genel Durum",
+                plan.get("genel_durum", "").capitalize()
+                    )
+                col_p4.metric(
+                "Net Servet",
+                    f"{plan.get('net_servet', 0):,.0f} TL"
+                    )
 
                 # Hedef analizi
                 hedef_analizi = plan.get("hedef_analizi", [])
@@ -415,36 +426,81 @@ elif page == "🎯 Profil & Hedefler":
 
 # ── Sayfa 5: Senaryo ─────────────────────────────────────────
 elif page == "🔮 Senaryo":
-    st.title("🔮 Ya Şöyle Olursa?")
-    st.caption("Bir harcama senaryosu simüle edin.")
+    st.title("🔮 Harcama Simülasyonu")
+    st.caption(
+        "Yapmayı düşündüğünüz bir harcamanın bütçenize etkisini "
+        "önceden hesaplayın."
+    )
 
     if "session_id" not in st.session_state:
         st.warning("Önce ekstre yükleyin.")
         st.stop()
 
-    col1, col2 = st.columns(2)
+    # Hızlı seçim
+    st.subheader("Hızlı Senaryo Seç")
+    hizli = st.selectbox(
+        "Hazır senaryolardan seçin veya kendiniz girin:",
+        [
+            "Kendiniz girin...",
+            "Yurt dışı tatil — 15.000 TL",
+            "Yeni telefon — 25.000 TL",
+            "Spor salonu + takviye — 2.000 TL/ay",
+            "Araba bakım — 8.000 TL",
+            "Kurs / eğitim — 5.000 TL",
+        ]
+    )
 
+    # Seçime göre otomatik doldur
+    defaults = {
+        "Yurt dışı tatil — 15.000 TL": ("Yurt dışı tatil", 15000),
+        "Yeni telefon — 25.000 TL": ("Yeni telefon", 25000),
+        "Spor salonu + takviye — 2.000 TL/ay": ("Spor salonu", 2000),
+        "Araba bakım — 8.000 TL": ("Araba bakım", 8000),
+        "Kurs / eğitim — 5.000 TL": ("Kurs / eğitim", 5000),
+    }
+    default_ad, default_tutar = defaults.get(hizli, ("", 0))
+
+    st.divider()
+    st.subheader("Senaryo Detayı")
+
+    col1, col2 = st.columns(2)
     with col1:
         senaryo_ad = st.text_input(
-            "Senaryo",
-            placeholder="Yurt dışı tatil, yeni telefon, spor salonu..."
+            "Harcama adı",
+            value=default_ad,
+            placeholder="Örn: Yurt dışı tatil"
         )
         senaryo_tutar = st.number_input(
-            "Harcama Tutarı (TL)", min_value=0, value=0, step=500
+            "Harcama tutarı (TL)",
+            min_value=0,
+            value=default_tutar,
+            step=500,
+            help="Tek seferlik veya aylık harcama tutarını girin"
         )
 
     with col2:
         hedef_tutar = st.number_input(
-            "Birikim Hedefi (TL) — opsiyonel",
-            min_value=0, value=0, step=1000
+            "Birikim hedefiniz (TL) — opsiyonel",
+            min_value=0,
+            value=0,
+            step=1000,
+            help="Hedefiniz varsa girin. Bu harcamanın hedefinizi nasıl etkilediğini gösterir."
         )
         sure_ay = st.number_input(
-            "Hedef Süresi (ay)", min_value=1, value=12, step=1
+            "Hedefe ulaşmak istediğiniz süre (ay)",
+            min_value=1,
+            value=12,
+            step=1
         )
+
+    st.info(
+        "💡 Bu araç, yapmayı düşündüğünüz harcamanın aylık tasarrufunuzu "
+        "ve birikim hedefinizi nasıl etkileyeceğini hesaplar."
+    )
 
     if st.button("🔮 Simüle Et", type="primary"):
         if not senaryo_ad or senaryo_tutar == 0:
-            st.warning("Senaryo adı ve tutar giriniz.")
+            st.warning("Harcama adı ve tutar giriniz.")
         else:
             with st.spinner("Simülasyon hesaplanıyor..."):
                 resp = requests.post(
@@ -460,7 +516,6 @@ elif page == "🔮 Senaryo":
 
                 if resp.status_code == 200:
                     data = resp.json()
-
                     etki = data.get("etki_seviyesi", "")
                     renk = {
                         "minimal": "success",
@@ -471,7 +526,7 @@ elif page == "🔮 Senaryo":
                     }.get(etki, "info")
 
                     getattr(st, renk)(
-                        f"Etki Seviyesi: {etki.upper()} — {data.get('tavsiye', '')}"
+                        f"Etki: {etki.upper()} — {data.get('tavsiye', '')}"
                     )
 
                     col_s1, col_s2, col_s3 = st.columns(3)
@@ -483,21 +538,23 @@ elif page == "🔮 Senaryo":
                         f"{mevcut.get('aylik_tasarruf', 0):,.0f} TL"
                     )
                     col_s2.metric(
-                        "Senaryo Sonrası",
+                        "Senaryo Sonrası Tasarruf",
                         f"{senaryo.get('aylik_tasarruf', 0):,.0f} TL",
-                        delta=f"-{senaryo.get('fark', 0):,.0f} TL yıllık"
+                        delta=f"-{senaryo_tutar:,.0f} TL"
                     )
                     col_s3.metric(
-                        "Yıllık Fark",
-                        f"{senaryo.get('fark', 0):,.0f} TL"
+                        "Yıllık Etki",
+                        f"{senaryo.get('fark', 0):,.0f} TL kayıp"
                     )
 
                     h = data.get("hedef_analizi")
                     if h and h.get("mevcut_sure_ay"):
+                        gecikme = h.get("gecikme_ay", 0) or 0
                         st.info(
-                            f"🎯 {h['hedef_tutar']:,.0f} TL hedefine:\n\n"
-                            f"Mevcut hızla **{h['mevcut_sure_ay']} ayda** ulaşırsın. "
-                            f"Bu senaryo ile **{h.get('senaryo_sure_ay', '?')} aya** çıkar."
+                            f"🎯 {h['hedef_tutar']:,.0f} TL hedefinize:\n\n"
+                            f"Mevcut hızla **{h['mevcut_sure_ay']} ayda** ulaşırsınız. "
+                            f"Bu harcama sonrası **{h.get('senaryo_sure_ay', '?')} aya** çıkar "
+                            f"({gecikme} ay gecikme)."
                         )
                 else:
                     st.error(f"Hata: {resp.text}")
@@ -553,8 +610,8 @@ elif page == "✏️ İşlem Ekle":
                         col_r1, col_r2, col_r3, col_r4 = st.columns(4)
                         col_r1.metric("Tarih", parsed.get("tarih", "-"))
                         col_r2.metric("Tutar", f"{parsed.get('tutar', 0):,.0f} TL")
-                        col_r3.metric("Kategori", parsed.get("kategori", "-"))
-                        col_r4.metric("Güven", parsed.get("guven", "-"))
+                        col_r3.metric("Kategori", parsed.get("kategori", "-").capitalize())
+                        col_r4.metric("Yer", parsed.get("yer") or "Belirtilmedi")
 
                         st.success(
                             f"✅ '{parsed.get('aciklama')}' işlemi "

@@ -13,8 +13,10 @@ from agents.analyst_agent import run_analyst
 
 from utils.health_score import calculate_health_score
 from utils.awareness import get_awareness_message
+from utils.monthly_summary import generate_monthly_summary
 
 class FinSightState(TypedDict):
+    monthly_summary: Optional[str]
     file_path: Optional[str]
     user_query: Optional[str]
     session_id: Optional[str]
@@ -95,7 +97,6 @@ def advisory_node(state: FinSightState) -> dict:
             parsed_summary=state.get("parsed_summary", {}),
         )
 
-        # Finansal sağlık skoru
         health = calculate_health_score(
             parsed_summary=state.get("parsed_summary", {}),
             categories=state.get("categories", {}),
@@ -104,11 +105,20 @@ def advisory_node(state: FinSightState) -> dict:
             anomalies=state.get("anomalies", [])
         )
 
-        # Bilinçlendirme mesajı
         awareness = get_awareness_message(
             categories=state.get("categories", {}),
             subscriptions=state.get("subscriptions", []),
             health_score=health.get("toplam_skor")
+        )
+
+        # Aylık özet ekle
+        monthly_summary = generate_monthly_summary(
+            categories=state.get("categories", {}),
+            parsed_summary=state.get("parsed_summary", {}),
+            inflation_analysis=state.get("inflation_analysis", {}),
+            anomalies=state.get("anomalies", []),
+            subscriptions=state.get("subscriptions", []),
+            health_score=health
         )
 
         return {
@@ -117,6 +127,7 @@ def advisory_node(state: FinSightState) -> dict:
             "final_response": result["final_response"],
             "health_score": health,
             "awareness_message": awareness,
+            "monthly_summary": monthly_summary,
             "current_step": "done"
         }
     except Exception as e:

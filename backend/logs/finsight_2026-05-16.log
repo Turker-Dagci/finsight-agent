@@ -1,0 +1,138 @@
+2026-05-16 23:08:00 | api                  | INFO     | Dosya yüklendi: ayse_nisan_2026.pdf — session: 7e7f935e
+2026-05-16 23:08:02 | api                  | INFO     | Analiz başladı — session: 7e7f935e
+2026-05-16 23:08:02 | workflow             | INFO     | Parser Agent başladı
+2026-05-16 23:08:02 | parser_agent         | INFO     | PDF okundu: 2984 byte
+2026-05-16 23:08:31 | parser_agent         | INFO     | Gemini yanıtı alındı: 2861 karakter
+2026-05-16 23:08:31 | parser_agent         | INFO     | İşlemler sanitize edildi
+2026-05-16 23:08:31 | parser_agent         | INFO     | 18 işlem parse edildi
+2026-05-16 23:08:56 | parser_agent         | INFO     | 18 işlem Qdrant'a kaydedildi
+2026-05-16 23:08:56 | workflow             | INFO     | Analyst Agent başladı
+2026-05-16 23:08:56 | analyst_agent        | INFO     | Kategorilendirme başladı
+2026-05-16 23:08:56 | analyst_agent        | INFO     | Enflasyon analizi başladı
+2026-05-16 23:08:56 | analyst_agent        | INFO     | Vergi X-Ray hesaplanıyor
+2026-05-16 23:08:56 | analyst_agent        | INFO     | Anomali tespiti başladı
+2026-05-16 23:08:56 | analyst_agent        | INFO     | Abonelik tespiti başladı
+2026-05-16 23:08:56 | workflow             | INFO     | Normal akış — Advisory'e geçiliyor
+2026-05-16 23:08:56 | workflow             | INFO     | Advisory Agent başladı
+2026-05-16 23:08:56 | advisory_agent       | INFO     | Piyasa bağlamı çekiliyor
+2026-05-16 23:08:56 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-16 23:08:57 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-16 23:08:57 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-16 23:08:57 | context_fetcher      | INFO     | USD/TL: 45.4695
+2026-05-16 23:08:57 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1
+2026-05-16 23:08:57 | advisory_agent       | INFO     | Döviz kalkanı hesaplanıyor
+2026-05-16 23:08:57 | advisory_agent       | INFO     | Proaktif uyarılar üretiliyor
+2026-05-16 23:08:57 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor
+2026-05-16 23:09:08 | health_score         | INFO     | Finansal sağlık skoru: 66/100 — Orta
+2026-05-16 23:09:08 | api                  | INFO     | Analiz tamamlandı — session: 7e7f935e
+2026-05-16 23:11:35 | api                  | INFO     | Sorgu: Bu ay en çok neye harcadım? — session: 7e7f935e
+2026-05-16 23:11:35 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-16 23:11:42 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-16 23:11:42 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-16 23:11:42 | context_fetcher      | INFO     | USD/TL: 45.4695
+2026-05-16 23:11:42 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1
+2026-05-16 23:13:33 | scenario_planner     | INFO     | Senaryo simüle edildi: 'Tatil' — 5,000 TL — etki: yüksek
+2026-05-16 23:13:33 | api                  | INFO     | Senaryo simüle edildi — session: 7e7f935e
+2026-05-16 23:13:44 | scenario_planner     | INFO     | Senaryo simüle edildi: 'Tatil' — 5,000 TL — etki: yüksek
+2026-05-16 23:13:44 | api                  | INFO     | Senaryo simüle edildi — session: 7e7f935e
+2026-05-16 23:14:31 | nlp_parser           | INFO     | NLP parse başladı: 'Bugün marketten 300 TL harcadım'
+2026-05-16 23:14:42 | nlp_parser           | INFO     | NLP parse tamamlandı: Market harcaması — 300.0 TL — gida
+2026-05-16 23:14:44 | nlp_parser           | INFO     | NLP işlemi Qdrant'a kaydedildi: Market harcaması
+2026-05-16 23:26:31 | api                  | INFO     | Dosya yüklendi: ayse_nisan_2026.pdf — session: 52ed103c
+2026-05-16 23:26:34 | api                  | INFO     | Analiz başladı — session: 52ed103c
+2026-05-16 23:26:34 | workflow             | INFO     | Parser Agent başladı
+2026-05-16 23:26:34 | parser_agent         | INFO     | PDF okundu: 2984 byte
+2026-05-16 23:27:01 | parser_agent         | INFO     | Gemini yanıtı alındı: 2833 karakter
+2026-05-16 23:27:01 | parser_agent         | INFO     | İşlemler sanitize edildi
+2026-05-16 23:27:01 | parser_agent         | INFO     | 18 işlem parse edildi
+2026-05-16 23:27:27 | parser_agent         | INFO     | 18 işlem Qdrant'a kaydedildi
+2026-05-16 23:27:27 | workflow             | INFO     | Analyst Agent başladı
+2026-05-16 23:27:27 | analyst_agent        | INFO     | Kategorilendirme başladı
+2026-05-16 23:27:27 | analyst_agent        | INFO     | Enflasyon analizi başladı
+2026-05-16 23:27:27 | analyst_agent        | INFO     | Vergi X-Ray hesaplanıyor
+2026-05-16 23:27:27 | analyst_agent        | INFO     | Anomali tespiti başladı
+2026-05-16 23:27:27 | analyst_agent        | INFO     | Abonelik tespiti başladı
+2026-05-16 23:27:27 | workflow             | INFO     | Normal akış — Advisory'e geçiliyor
+2026-05-16 23:27:27 | workflow             | INFO     | Advisory Agent başladı
+2026-05-16 23:27:27 | advisory_agent       | INFO     | Piyasa bağlamı çekiliyor
+2026-05-16 23:27:27 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-16 23:27:28 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-16 23:27:28 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-16 23:27:28 | context_fetcher      | INFO     | USD/TL: 45.4695
+2026-05-16 23:27:28 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1
+2026-05-16 23:27:28 | advisory_agent       | INFO     | Döviz kalkanı hesaplanıyor
+2026-05-16 23:27:28 | workflow             | ERROR    | Advisory hatası: unsupported operand type(s) for /: 'NoneType' and 'float'
+Traceback (most recent call last):
+  File "C:\Users\OMEN\finsight-agent\backend\graph\workflow.py", line 88, in advisory_node
+    result = run_advisory(
+        user_query=state.get("user_query", "Genel analiz yap"),
+    ...<5 lines>...
+        parsed_summary=state.get("parsed_summary", {}),
+    )
+  File "C:\Users\OMEN\finsight-agent\backend\agents\advisory_agent.py", line 188, in run_advisory
+    fx_shield = calculate_fx_shield(parsed_summary, market_context["doviz"])
+  File "C:\Users\OMEN\finsight-agent\backend\agents\advisory_agent.py", line 20, in calculate_fx_shield
+    "aylik_gider_usd": round(toplam_gider / usd_rate, 2),
+                             ~~~~~~~~~~~~~^~~~~~~~~~
+TypeError: unsupported operand type(s) for /: 'NoneType' and 'float'
+2026-05-16 23:27:28 | api                  | INFO     | Analiz tamamlandı — session: 52ed103c
+2026-05-16 23:33:37 | api                  | INFO     | Dosya yüklendi: ayse_nisan_2026.pdf — session: 251d5be3
+2026-05-16 23:33:39 | api                  | INFO     | Analiz başladı — session: 251d5be3
+2026-05-16 23:33:39 | workflow             | INFO     | Parser Agent başladı
+2026-05-16 23:33:39 | parser_agent         | INFO     | PDF okundu: 2984 byte
+2026-05-16 23:34:08 | parser_agent         | INFO     | Gemini yanıtı alındı: 2878 karakter
+2026-05-16 23:34:08 | parser_agent         | INFO     | İşlemler sanitize edildi
+2026-05-16 23:34:08 | parser_agent         | INFO     | 18 işlem parse edildi
+2026-05-16 23:34:35 | parser_agent         | INFO     | 18 işlem Qdrant'a kaydedildi
+2026-05-16 23:34:35 | workflow             | INFO     | Analyst Agent başladı
+2026-05-16 23:34:35 | analyst_agent        | INFO     | Kategorilendirme başladı
+2026-05-16 23:34:35 | analyst_agent        | INFO     | Enflasyon analizi başladı
+2026-05-16 23:34:35 | analyst_agent        | INFO     | Vergi X-Ray hesaplanıyor
+2026-05-16 23:34:35 | analyst_agent        | INFO     | Anomali tespiti başladı
+2026-05-16 23:34:35 | analyst_agent        | INFO     | Abonelik tespiti başladı
+2026-05-16 23:34:35 | workflow             | INFO     | Normal akış — Advisory'e geçiliyor
+2026-05-16 23:34:35 | workflow             | INFO     | Advisory Agent başladı
+2026-05-16 23:34:35 | advisory_agent       | INFO     | Piyasa bağlamı çekiliyor
+2026-05-16 23:34:35 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-16 23:34:38 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-16 23:34:38 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-16 23:34:38 | context_fetcher      | INFO     | USD/TL: 45.4695
+2026-05-16 23:34:38 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1
+2026-05-16 23:34:38 | advisory_agent       | INFO     | Döviz kalkanı hesaplanıyor
+2026-05-16 23:34:38 | advisory_agent       | INFO     | Proaktif uyarılar üretiliyor
+2026-05-16 23:34:38 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor
+2026-05-16 23:34:53 | health_score         | INFO     | Finansal sağlık skoru: 66/100 — Orta
+2026-05-16 23:34:53 | api                  | INFO     | Analiz tamamlandı — session: 251d5be3
+2026-05-17 00:08:08 | api                  | INFO     | Dosya yüklendi: ayse_nisan_2026.pdf — session: d251d3a4
+2026-05-17 00:08:10 | api                  | INFO     | Analiz başladı — session: d251d3a4
+2026-05-17 00:08:10 | workflow             | INFO     | Parser Agent başladı
+2026-05-17 00:08:10 | parser_agent         | INFO     | PDF okundu: 2984 byte
+2026-05-17 00:08:36 | parser_agent         | INFO     | Gemini yanıtı alındı: 2861 karakter
+2026-05-17 00:08:36 | parser_agent         | INFO     | İşlemler sanitize edildi
+2026-05-17 00:08:36 | parser_agent         | INFO     | 18 işlem parse edildi
+2026-05-17 00:09:09 | parser_agent         | INFO     | 18 işlem Qdrant'a kaydedildi
+2026-05-17 00:09:09 | workflow             | INFO     | Analyst Agent başladı
+2026-05-17 00:09:09 | analyst_agent        | INFO     | Kategorilendirme başladı
+2026-05-17 00:09:09 | analyst_agent        | INFO     | Enflasyon analizi başladı
+2026-05-17 00:09:09 | analyst_agent        | INFO     | Vergi X-Ray hesaplanıyor
+2026-05-17 00:09:09 | analyst_agent        | INFO     | Anomali tespiti başladı
+2026-05-17 00:09:09 | analyst_agent        | INFO     | Abonelik tespiti başladı
+2026-05-17 00:09:09 | workflow             | INFO     | Normal akış — Advisory'e geçiliyor
+2026-05-17 00:09:09 | workflow             | INFO     | Advisory Agent başladı
+2026-05-17 00:09:09 | advisory_agent       | INFO     | Piyasa bağlamı çekiliyor
+2026-05-17 00:09:09 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-17 00:09:10 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-17 00:09:10 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-17 00:09:10 | context_fetcher      | INFO     | USD/TL: 45.4695
+2026-05-17 00:09:10 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1
+2026-05-17 00:09:10 | advisory_agent       | INFO     | Döviz kalkanı hesaplanıyor
+2026-05-17 00:09:10 | advisory_agent       | INFO     | Proaktif uyarılar üretiliyor
+2026-05-17 00:09:10 | advisory_agent       | INFO     | Gemini yanıtı üretiliyor
+2026-05-17 00:09:22 | health_score         | INFO     | Finansal sağlık skoru: 66/100 — Orta
+2026-05-17 00:09:22 | api                  | INFO     | Analiz tamamlandı — session: d251d3a4
+2026-05-17 00:10:13 | api                  | INFO     | Sorgu: 10000 tl'ye ihtiyacım var bu hedefe ulaşmak için n — session: d251d3a4
+2026-05-17 00:10:13 | context_fetcher      | INFO     | Piyasa verileri çekiliyor
+2026-05-17 00:10:15 | context_fetcher      | INFO     | Döviz kurları alındı: ['USD', 'EUR', 'GBP', 'CHF', 'tarih']
+2026-05-17 00:10:15 | context_fetcher      | WARNING  | NEWS_API_KEY bulunamadı, fallback haberler kullanılıyor
+2026-05-17 00:10:15 | context_fetcher      | INFO     | USD/TL: 45.4695
+2026-05-17 00:10:15 | context_fetcher      | INFO     | Yıllık TÜFE: %38.1

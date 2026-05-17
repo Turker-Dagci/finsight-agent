@@ -136,6 +136,7 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
     result = graph.invoke(state)
 
     session_store[session_id]["result"] = {
+        "monthly_summary": result.get("monthly_summary"),
         "categories": result.get("categories"),
         "anomalies": result.get("anomalies"),
         "subscriptions": result.get("subscriptions"),
@@ -157,6 +158,7 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
     return {
         "session_id": session_id,
         "status": "analyzed",
+        "monthly_summary": result.get("monthly_summary"),
         "parsed_summary": result.get("parsed_summary"),
         "categories": result.get("categories"),
         "anomalies": result.get("anomalies"),

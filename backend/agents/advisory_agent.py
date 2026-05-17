@@ -89,23 +89,16 @@ def generate_advisory_response(
 ) -> str:
     """Gemini ile kapsamlı finansal tavsiye üretir."""
 
-
-    # Bağlam hazırla
     doviz_ozet = f"USD/TL: {market_context['ozet']['usd_tl']}, EUR/TL: {market_context['ozet']['eur_tl']}"
     enflasyon_ozet = f"Aylık TÜFE: %{market_context['ozet']['aylik_tufe']}, Yıllık: %{market_context['ozet']['yillik_tufe']}"
     haberler = "\n".join([f"- {h['baslik']}" for h in market_context.get("haberler", [])])
-
     kategori_metin = "\n".join([f"- {k}: {v:,.0f} TL" for k, v in categories.items()])
-    
     vergi_toplam = tax_breakdown.get("TOPLAM", {}).get("toplam_vergi", 0)
-    
     enflasyon_metin = "\n".join([
         f"- {k}: nominal {v['nominal']:,.0f} TL, reel {v['reel']:,.0f} TL, kayıp {v['kayip']:,.0f} TL"
         for k, v in inflation_analysis.items()
     ])
-
     anomali_metin = "\n".join(anomalies) if anomalies else "Anomali tespit edilmedi."
-    
     abone_metin = "\n".join([
         f"- {s['aciklama']}: {s['tutar']:.0f} TL"
         for s in subscriptions
@@ -117,11 +110,40 @@ def generate_advisory_response(
 FİNANSAL PROFİL:
 - Gelir kaynağı: {financial_profile.get('gelir_kaynak', 'Belirtilmedi')}
 - Ek gelir: {financial_profile.get('ek_gelir', 'Yok')}
-- Toplam borç: {financial_profile.get('bor', 'Belirtilmedi')}
-- Yatırımlar: {financial_profile.get('yatirim', 'Belirtilmedi')}
+- Toplam borç: {financial_profile.get('borclar', 'Belirtilmedi')}
+- Yatırımlar: {financial_profile.get('yatirimlar', 'Belirtilmedi')}
 """
 
-    prompt = f"""Sen FinSight, Türkiye'deki KOBİ ve bireyler için çalışan uzman bir finansal analiz asistanısın.
+    KISMA_KURALLARI = """
+KESİNLİKLE ÖNERMEMEN GEREKEN KISINTLAR:
+- Kira: Sözleşme bağlayıcıdır, kesilemez
+- Temel gıda (market alışverişi): Sağlık için zorunludur
+- Elektrik, su, doğalgaz faturaları: Zorunlu giderdir
+- Sağlık harcamaları: Kesilemez
+- Ulaşım (işe gidiş): Zorunludur
+- Kredi/borç ödemeleri: Yasal yükümlülüktür
+
+ÖNERİLEBİLECEK KISINTLAR (önce bunlara bak):
+- Kullanılmayan veya az kullanılan abonelikler
+- Kafe, restoran, dışarıda yeme/içme
+- Eğlence (sinema, bowling, alışveriş)
+- Anlık ve plansız alışverişler
+- ATM nakit çekimleri
+
+NAKİT İHTİYACI İÇİN:
+1. Bu ihtiyaç zorunlu mu, ertelenebilir mi?
+2. Mevcut tasarruftan karşılanabilir mi?
+3. Sadece kısılabilir harcamalardan tasarruf öner.
+Asla zorunlu giderleri kısmayı önerme.
+
+BİRİKİM HEDEFİ İÇİN:
+Hedefe ulaşmak için gereken ek tasarrufu hesapla.
+Bu tasarrufu YALNIZCA kısılabilir harcamalardan karşıla.
+"""
+
+    prompt = f"""{KISMA_KURALLARI}
+
+Sen FinSight, Türkiye'deki KOBİ ve bireyler için çalışan uzman bir finansal analiz asistanısın.
 Kullanıcının banka ekstresini analiz ettin ve aşağıdaki verilere sahipsin.
 Türkçe, samimi, anlaşılır ve somut tavsiyeler ver. Genel laflar etme.
 

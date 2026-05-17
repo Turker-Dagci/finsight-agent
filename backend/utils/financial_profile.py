@@ -96,26 +96,33 @@ def calculate_budget_plan(
     logger.info(f"Bütçe planı hazırlandı: {len(hedef_analizi)} hedef")
 
     return {
-        "aylik_gelir": aylik_gelir,
-        "toplam_gider": toplam_gider,
-        "mevcut_tasarruf": round(mevcut_tasarruf, 0),
-        "ideal_dagilim": {
-            "zorunlu_50": round(ideal_zorunlu, 0),
-            "istekler_30": round(ideal_istekler, 0),
-            "tasarruf_20": round(ideal_tasarruf, 0),
-        },
-        "mevcut_dagilim": {
-            "zorunlu": round(mevcut_zorunlu, 0),
-            "istekler": round(mevcut_istekler, 0),
-            "gida": round(mevcut_gida, 0),
-            "tasarruf": round(mevcut_tasarruf, 0),
-        },
-        "hedef_analizi": hedef_analizi,
-        "genel_durum": (
-            "sağlıklı" if mevcut_tasarruf >= ideal_tasarruf
-            else "geliştirilmeli"
-        )
-    }
+    "aylik_gelir": aylik_gelir,
+    "toplam_gider": toplam_gider,
+    "mevcut_tasarruf": round(mevcut_tasarruf, 0),
+    "net_servet": round(                          # ← bunu ekle
+        (profile.get("yatirim_tutar", 0) or 0) +
+        (profile.get("birikim_tutar", 0) or 0) +
+        (profile.get("nakit_tutar", 0) or 0) -
+        (profile.get("borc_tutar", 0) or 0),
+        0
+    ),
+    "ideal_dagilim": {
+        "zorunlu_50": round(ideal_zorunlu, 0),
+        "istekler_30": round(ideal_istekler, 0),
+        "tasarruf_20": round(ideal_tasarruf, 0),
+    },
+    "mevcut_dagilim": {
+        "zorunlu": round(mevcut_zorunlu, 0),
+        "istekler": round(mevcut_istekler, 0),
+        "gida": round(mevcut_gida, 0),
+        "tasarruf": round(mevcut_tasarruf, 0),
+    },
+    "hedef_analizi": hedef_analizi,
+    "genel_durum": (
+        "sağlıklı" if mevcut_tasarruf >= ideal_tasarruf
+        else "geliştirilmeli"
+    )
+}
 
 
 def build_profile_context(profile: dict, budget_plan: dict) -> str:
