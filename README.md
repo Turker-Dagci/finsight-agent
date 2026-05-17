@@ -180,7 +180,9 @@ API dokümantasyonu için http://localhost:8000/docs adresini ziyaret edin.
 
 ## 👤 Geliştirici
 
-**İrfan Türker Dağcı**
+**İrfan Türker Dağcı** (Backend + AI)
+İnönü Üniversitesi — Yazılım Mühendisliği
+**Nihat Burak Eraslan** (UI & UX + Testing)
 İnönü Üniversitesi — Yazılım Mühendisliği
 
 ---
