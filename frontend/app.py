@@ -229,6 +229,20 @@ elif page == "📊 Analiz":
 
     st.divider()
 
+    # Öngörülen giderler
+    predicted = result.get("predicted_expenses", {})
+    if predicted and predicted.get("tahminler"):
+        st.divider()
+        st.subheader("📅 Önümüzdeki 30 Gün — Beklenen Giderler")
+        st.caption(f"Toplam beklenen: {predicted.get('toplam', 0):,.0f} TL")
+
+        for t in predicted.get("tahminler", []):
+            renk = "🔴" if t["tur"] == "zorunlu" else "🟡"
+            st.markdown(
+                f"{renk} **{t['tarih']}** — {t['aciklama']} "
+                f"— **{t['tutar']:,.0f} TL**"
+            )
+
     # Uyarılar ve anomaliler
     col_a, col_b = st.columns(2)
     with col_a:
@@ -250,6 +264,13 @@ elif page == "📊 Analiz":
             st.success("Anomali tespit edilmedi.")
 
     st.divider()
+
+    # Davranışsal koçluk
+    insights = result.get("behavioral_insights", [])
+    if insights:
+        st.subheader("🧠 Davranışsal Analiz")
+        for i in insights:
+            st.info(i)
 
     # Gemini tavsiyesi
     st.subheader("🤖 FinSight Tavsiyesi")

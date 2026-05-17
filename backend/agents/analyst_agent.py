@@ -143,6 +143,7 @@ def run_analyst(transactions: list, parsed_summary: dict) -> dict:
         "inflation_analysis": inflation,
         "tax_breakdown": tax,
         "anomalies": anomalies,
+        "behavioral_insights": behavioral_insights,
         "subscriptions": subscriptions,
         "ozet": {
             "toplam_gelir": toplam_gelir,
@@ -152,6 +153,80 @@ def run_analyst(transactions: list, parsed_summary: dict) -> dict:
             "toplam_vergi": tax.get("TOPLAM", {}).get("toplam_vergi", 0),
         }
     }
+
+def generate_behavioral_insights(transactions: list, categories: dict) -> list:
+    """
+    Kullanıcının harcama davranışlarını analiz eder.
+    'Bu ay 4 kez Starbucks'a gittin' tarzı uyarılar üretir.
+    """
+    insights = []
+
+    # Yer bazlı tekrar analizi
+    yer_sayac = {}
+    for t in transactions:
+        if t.get("tur") == "gelir":
+            continue
+        aciklama = t.get("aciklama", "").lower()
+        tutar = abs(t.get("tutar", 0))
+        yer_sayac[aciklama] = yer_sayac.get(aciklama, {"sayi": 0, "toplam": 0})
+        yer_sayac[aciklama]["sayi"] += 1
+        yer_sayac[aciklama]["toplam"] += tutar
+
+    for yer, veri in yer_sayac.items():
+        if veri["sayi"] >= 3:
+            insights.append(
+                f"☕ '{yer.title()}' bu ay {veri['sayi']} kez ziyaret edildi "
+                f"— toplam {veri['toplam']:,.0f} TL."
+            )
+
+    # ATM nakit çekimi
+    atm_toplam = sum(
+        abs(t.get("tutar", 0)) for t in transactions
+        if "atm" in t.get("aciklama", "").lower()
+        and t.get("tur") == "gider"
+    )
+    if atm_toplam > 0:
+        insights.append(
+            f"💵 Bu ay ATM'den toplam {atm_toplam:,.0f} TL nakit çekildi. "
+            f"Nakit harcamalar takip edilemiyor — dijital ödeme tercih edin."
+        )
+
+    # Hafta sonu harcama analizi
+    hafta_sonu_toplam = 0
+    hafta_ici_toplam = 0
+    for t in transactions:
+        if t.get("tur") == "gelir":
+            continue
+        try:
+            from datetime import datetime
+            tarih = datetime.strptime(t.get("tarih", ""), "%Y-%m-%d")
+            tutar = abs(t.get("tutar", 0))
+            if tarih.weekday() >= 5:
+                hafta_sonu_toplam += tutar
+            else:
+                hafta_ici_toplam += tutar
+        except Exception:
+            pass
+
+    if hafta_sonu_toplam > 0 and hafta_ici_toplam > 0:
+        oran = hafta_sonu_toplam / (hafta_sonu_toplam + hafta_ici_toplam) * 100
+        if oran > 40:
+            insights.append(
+                f"📅 Harcamanın %{oran:.0f}'i hafta sonlarında gerçekleşti "
+                f"({hafta_sonu_toplam:,.0f} TL). "
+                f"Hafta sonu planlaması bütçeni etkileyebilir."
+            )
+
+    # Eğlence kategorisi yüksekse
+    eglence = categories.get("eglence", 0)
+    toplam = sum(categories.values())
+    if toplam > 0 and eglence / toplam > 0.15:
+        insights.append(
+            f"🎮 Eğlence harcaman toplam giderin %{eglence/toplam*100:.0f}'i "
+            f"({eglence:,.0f} TL). Kısılabilir en esnek kategori bu."
+        )
+
+    return insights
 
 
 if __name__ == "__main__":

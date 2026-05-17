@@ -14,9 +14,12 @@ from agents.analyst_agent import run_analyst
 from utils.health_score import calculate_health_score
 from utils.awareness import get_awareness_message
 from utils.monthly_summary import generate_monthly_summary
+from utils.predicted_expenses import predict_upcoming_expenses
 
 class FinSightState(TypedDict):
+    predicted_expenses: Optional[dict]
     monthly_summary: Optional[str]
+    behavioral_insights: Optional[List[str]]
     file_path: Optional[str]
     user_query: Optional[str]
     session_id: Optional[str]
@@ -78,6 +81,7 @@ def analyst_node(state: FinSightState) -> dict:
             "subscriptions": result.get("subscriptions", []),
             "inflation_analysis": result["inflation_analysis"],
             "tax_breakdown": result["tax_breakdown"],
+            "behavioral_insights": result.get("behavioral_insights", []),
             "current_step": "advisory"
         }
     except Exception as e:
@@ -128,6 +132,7 @@ def advisory_node(state: FinSightState) -> dict:
             "health_score": health,
             "awareness_message": awareness,
             "monthly_summary": monthly_summary,
+            "predicted_expenses": predicted,
             "current_step": "done"
         }
     except Exception as e:
