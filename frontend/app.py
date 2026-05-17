@@ -26,11 +26,6 @@ st.markdown("""
         font-size: 14px;
         color: #c9d8f0;
     }
-    .score-label {
-        font-size: 13px;
-        color: #8b9dc3;
-        margin-bottom: 4px;
-    }
     .stButton button {
         background: linear-gradient(135deg, #1e3a5f, #2e75b6);
         color: white;
@@ -41,7 +36,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar ───────────────────────────────────────────────────
+# Sidebar
 with st.sidebar:
     st.title("💰 FinSight Agent")
     st.caption("Çok-Ajanlı KOBİ Finansal Analiz Sistemi")
@@ -49,7 +44,7 @@ with st.sidebar:
     page = st.radio(
         "Sayfa",
         ["📤 Ekstre Yükle", "📊 Analiz", "💬 Sohbet",
-         "🎯 Profil & Hedefler", "🔮 Senaryo", "✏️ İşlem Ekle"]
+         "🎯 Profil & Hedefler", "🔮 Senaryo", "📝 Günlük İşlem Ekle"]
     )
     st.divider()
     if "session_id" in st.session_state:
@@ -59,15 +54,12 @@ with st.sidebar:
     st.caption("Gemini 2.5 · LangGraph · Qdrant")
     st.caption("FastAPI · Streamlit")
 
-# ── Sayfa 1: Yükleme ─────────────────────────────────────────
+# Sayfa 1: Yükleme
 if page == "📤 Ekstre Yükle":
     st.title("📤 Banka Ekstresi Yükle")
     st.caption("PDF veya görüntü formatında banka ekstresi yükleyin.")
 
-    uploaded = st.file_uploader(
-        "Dosya seçin",
-        type=["pdf", "png", "jpg", "jpeg"]
-    )
+    uploaded = st.file_uploader("Dosya seçin", type=["pdf", "png", "jpg", "jpeg"])
 
     if uploaded:
         st.success(f"✅ {uploaded.name}")
@@ -80,11 +72,9 @@ if page == "📤 Ekstre Yükle":
             with st.spinner("📤 Dosya yükleniyor..."):
                 files = {"file": (uploaded.name, uploaded.getvalue())}
                 upload_resp = requests.post(f"{API_URL}/upload", files=files)
-
                 if upload_resp.status_code != 200:
                     st.error(f"Yükleme hatası: {upload_resp.text}")
                     st.stop()
-
                 session_id = upload_resp.json()["session_id"]
                 st.session_state["session_id"] = session_id
 
@@ -94,11 +84,9 @@ if page == "📤 Ekstre Yükle":
                     params={"session_id": session_id, "query": query},
                     timeout=180
                 )
-
                 if analyze_resp.status_code != 200:
                     st.error(f"Analiz hatası: {analyze_resp.text}")
                     st.stop()
-
                 result = analyze_resp.json()
                 st.session_state["result"] = result
 
@@ -106,7 +94,7 @@ if page == "📤 Ekstre Yükle":
             st.balloons()
             st.info("Sol menüden 'Analiz' sayfasına geçin.")
 
-# ── Sayfa 2: Analiz ──────────────────────────────────────────
+# Sayfa 2: Analiz
 elif page == "📊 Analiz":
     st.title("📊 Finansal Analiz")
 
@@ -115,20 +103,19 @@ elif page == "📊 Analiz":
         st.stop()
 
     result = st.session_state["result"]
-    summary = result.get("parsed_summary", {})
-    categories = result.get("categories", {})
-    health = result.get("health_score", {})
+    summary = result.get("parsed_summary", {}) or {}
+    categories = result.get("categories", {}) or {}
+    health = result.get("health_score", {}) or {}
     awareness = result.get("awareness_message", "")
     monthly = result.get("monthly_summary", "")
+
+    # Aylık özet
     if monthly:
         st.info(f"📅 **Bu Ayın Özeti:** {monthly}")
 
     # Bilinçlendirme mesajı
     if awareness:
-        st.markdown(
-            f'<div class="awareness-box">{awareness}</div>',
-            unsafe_allow_html=True
-        )
+        st.markdown(f'<div class="awareness-box">{awareness}</div>', unsafe_allow_html=True)
 
     # Özet metrikler
     gelir = summary.get("toplam_gelir") or 0
@@ -155,7 +142,6 @@ elif page == "📊 Analiz":
             seviye = health.get("seviye", "")
             mesaj = health.get("mesaj", "")
 
-            # Gauge chart
             fig_gauge = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=skor,
@@ -187,7 +173,6 @@ elif page == "📊 Analiz":
             st.plotly_chart(fig_gauge, use_container_width=True)
             st.caption(mesaj)
 
-            # Bileşenler
             bilesenler = health.get("bilesenler", {})
             detay = health.get("detay", {})
             for k, v in bilesenler.items():
@@ -216,39 +201,39 @@ elif page == "📊 Analiz":
             )
             st.plotly_chart(fig, use_container_width=True)
 
+        # Kategori düzeltme
+        with st.expander("✏️ Kategori Düzelt"):
+            st.caption("Yanlış kategorize edilen işlemi düzeltin, sistem öğrenir.")
+            col_k1, col_k2, col_k3 = st.columns(3)
+            islem_adi = col_k1.text_input("İşlem adı", placeholder="Shell Yakıt")
+            eski_kat = col_k2.selectbox(
+                "Mevcut kategori",
+                ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"]
+            )
+            yeni_kat = col_k3.selectbox(
+                "Doğru kategori",
+                ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"],
+                index=1
+            )
+            if st.button("💾 Düzeltmeyi Kaydet"):
+                if islem_adi:
+                    resp = requests.post(
+                        f"{API_URL}/correct-category",
+                        json={
+                            "aciklama": islem_adi,
+                            "eski_kategori": eski_kat,
+                            "yeni_kategori": yeni_kat
+                        }
+                    )
+                    if resp.status_code == 200:
+                        st.success("✅ Sistem bu düzeltmeyi öğrendi!")
+                else:
+                    st.warning("İşlem adı girin.")
+
     st.divider()
 
-    # Kategori düzeltme
-with st.expander("✏️ Kategori Düzelt"):
-    st.caption("Yanlış kategorize edilen işlemi düzeltin, sistem öğrenir.")
-    col_k1, col_k2, col_k3 = st.columns(3)
-    islem_adi = col_k1.text_input("İşlem adı", placeholder="Shell Yakıt")
-    eski_kat = col_k2.selectbox(
-        "Mevcut kategori",
-        ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"]
-    )
-    yeni_kat = col_k3.selectbox(
-        "Doğru kategori",
-        ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"],
-        index=1
-    )
-    if st.button("💾 Düzeltmeyi Kaydet"):
-        if islem_adi:
-            resp = requests.post(
-                f"{API_URL}/correct-category",
-                json={
-                    "aciklama": islem_adi,
-                    "eski_kategori": eski_kat,
-                    "yeni_kategori": yeni_kat
-                }
-            )
-            if resp.status_code == 200:
-                st.success("✅ Sistem bu düzeltmeyi öğrendi!")
-        else:
-            st.warning("İşlem adı girin.")
-
     # Döviz kalkanı
-    fx = result.get("fx_shield", {})
+    fx = result.get("fx_shield", {}) or {}
     if fx:
         st.subheader("💱 Döviz Kalkanı")
         c1, c2, c3 = st.columns(3)
@@ -259,30 +244,27 @@ with st.expander("✏️ Kategori Düzelt"):
     st.divider()
 
     # Öngörülen giderler
-    predicted = result.get("predicted_expenses", {})
+    predicted = result.get("predicted_expenses", {}) or {}
     if predicted and predicted.get("tahminler"):
-        st.divider()
         st.subheader("📅 Önümüzdeki 30 Gün — Beklenen Giderler")
         st.caption(f"Toplam beklenen: {predicted.get('toplam', 0):,.0f} TL")
-
         for t in predicted.get("tahminler", []):
             renk = "🔴" if t["tur"] == "zorunlu" else "🟡"
             st.markdown(
-                f"{renk} **{t['tarih']}** — {t['aciklama']} "
-                f"— **{t['tutar']:,.0f} TL**"
+                f"{renk} **{t['tarih']}** — {t['aciklama']} — **{t['tutar']:,.0f} TL**"
             )
+
+    st.divider()
+
     # Nakit akış tahmini
-    cashflow = result.get("cashflow_forecast", {})
+    cashflow = result.get("cashflow_forecast", {}) or {}
     if cashflow:
-        st.divider()
         st.subheader("💵 30 Günlük Nakit Akış Tahmini")
-
         renk_fn = {
-        "success": st.success,
-        "warning": st.warning,
-        "error": st.error
+            "success": st.success,
+            "warning": st.warning,
+            "error": st.error
         }.get(cashflow.get("risk_renk", "warning"), st.info)
-
         renk_fn(cashflow.get("risk_mesaj", ""))
 
         c1, c2, c3, c4 = st.columns(4)
@@ -291,11 +273,13 @@ with st.expander("✏️ Kategori Düzelt"):
         c3.metric("Günlük Limit", f"{cashflow.get('gunluk_guvenli_limit', 0):,.0f} TL/gün")
         c4.metric("Kalan Gün", f"{cashflow.get('ayin_kalan_gunu', 0)} gün")
 
+    st.divider()
+
     # Uyarılar ve anomaliler
     col_a, col_b = st.columns(2)
     with col_a:
         st.subheader("⚠️ Proaktif Uyarılar")
-        alerts = result.get("proactive_alerts", [])
+        alerts = result.get("proactive_alerts", []) or []
         if alerts:
             for a in alerts:
                 st.warning(a)
@@ -304,7 +288,7 @@ with st.expander("✏️ Kategori Düzelt"):
 
     with col_b:
         st.subheader("🔍 Anomaliler")
-        anomalies = result.get("anomalies", [])
+        anomalies = result.get("anomalies", []) or []
         if anomalies:
             for a in anomalies:
                 st.error(a)
@@ -314,11 +298,13 @@ with st.expander("✏️ Kategori Düzelt"):
     st.divider()
 
     # Davranışsal koçluk
-    insights = result.get("behavioral_insights", [])
+    insights = result.get("behavioral_insights", []) or []
     if insights:
         st.subheader("🧠 Davranışsal Analiz")
         for i in insights:
             st.info(i)
+
+    st.divider()
 
     # Gemini tavsiyesi
     st.subheader("🤖 FinSight Tavsiyesi")
@@ -327,12 +313,11 @@ with st.expander("✏️ Kategori Düzelt"):
         st.markdown(final)
     elif final:
         st.warning(final)
-    if st.button("🔄 Tavsiye Yenile"):
         st.info("Sohbet sayfasından 'Genel analiz yap' yazarak yeniden tavsiye alabilirsiniz.")
     else:
         st.info("Tavsiye almak için Sohbet sayfasına gidin ve bir soru sorun.")
 
-# ── Sayfa 3: Sohbet ──────────────────────────────────────────
+# Sayfa 3: Sohbet
 elif page == "💬 Sohbet":
     st.title("💬 FinSight ile Sohbet")
 
@@ -347,9 +332,7 @@ elif page == "💬 Sohbet":
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input(
-        "Sor: 'Bu ay aboneliklerimi azaltırsam ne tasarruf ederim?'"
-    ):
+    if prompt := st.chat_input("Sor: 'Bu ay aboneliklerimi azaltırsam ne tasarruf ederim?'"):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -358,19 +341,14 @@ elif page == "💬 Sohbet":
             with st.spinner("Analiz ediliyor..."):
                 resp = requests.post(
                     f"{API_URL}/query",
-                    json={
-                        "session_id": st.session_state["session_id"],
-                        "query": prompt
-                    },
+                    json={"session_id": st.session_state["session_id"], "query": prompt},
                     timeout=60
                 )
                 answer = resp.json().get("response", "Yanıt alınamadı.")
             st.markdown(answer)
-            st.session_state.messages.append(
-                {"role": "assistant", "content": answer}
-            )
+            st.session_state.messages.append({"role": "assistant", "content": answer})
 
-# ── Sayfa 4: Profil & Hedefler ────────────────────────────────
+# Sayfa 4: Profil & Hedefler
 elif page == "🎯 Profil & Hedefler":
     st.title("🎯 Finansal Profil & Hedefler")
 
@@ -386,18 +364,30 @@ elif page == "🎯 Profil & Hedefler":
             "Gelir Kaynağı",
             ["Maaş", "Serbest Meslek", "Emekli", "Kira Geliri", "Diğer"]
         )
-        aylik_gelir = st.number_input(
-            "Aylık Net Gelir (TL)", min_value=0, value=0, step=500
-        )
-        ek_gelir = st.text_input("Ek Gelir", placeholder="Freelance, kira vb.")
+        aylik_gelir = st.number_input("Aylık Net Gelir (TL)", min_value=0, value=0, step=500)
+        ek_gelir_ad = st.text_input("Ek Gelir Kaynağı", placeholder="Freelance, kira vb.")
+        ek_gelir_tutar = st.number_input("Ek Gelir Tutarı (TL/ay)", min_value=0, value=0, step=500)
 
     with col2:
-        borclar = st.text_input(
-            "Toplam Borç", placeholder="50.000 TL kredi vb."
+        borc_tutar = st.number_input("Toplam Borç (TL)", min_value=0, value=0, step=1000)
+        yatirim_var = st.radio("Yatırımınız var mı?", ["Hayır", "Evet"], horizontal=True)
+        yatirim_tutar = 0
+        yatirim_turu = "Yok"
+        if yatirim_var == "Evet":
+            yatirim_turleri = st.multiselect(
+                "Yatırım türleri",
+                ["Döviz (USD/EUR)", "Altın", "Hisse Senedi", "Mevduat", "Kripto"]
+            )
+            yatirim_tutar = st.number_input(
+                "Toplam yatırım tutarı (TL)", min_value=0, value=0, step=5000
+            )
+            yatirim_turu = ", ".join(yatirim_turleri) if yatirim_turleri else "Belirtilmedi"
+
+        birikim_tutar = st.number_input(
+            "Faizli/Vadeli Birikim (TL)", min_value=0, value=0, step=1000
         )
-        yatirimlar = st.multiselect(
-            "Mevcut Yatırımlar",
-            ["Döviz", "Altın", "Hisse Senedi", "Mevduat", "Kripto", "Yok"]
+        nakit_tutar = st.number_input(
+            "Nakit/Vadesiz Hesap (TL)", min_value=0, value=0, step=1000
         )
 
     st.subheader("Finansal Hedefleriniz")
@@ -412,37 +402,28 @@ elif page == "🎯 Profil & Hedefler":
                 key=f"hedef_ad_{i}"
             )
             col_h1, col_h2, col_h3 = st.columns(3)
-            tutar = col_h1.number_input(
-                "Hedef Tutar (TL)", min_value=0, value=0, step=1000,
-                key=f"hedef_tutar_{i}"
-            )
-            butce = col_h2.number_input(
-                "Aylık Bütçe (TL)", min_value=0, value=0, step=500,
-                key=f"hedef_butce_{i}"
-            )
-            sure = col_h3.number_input(
-                "Süre (ay)", min_value=1, value=12, step=1,
-                key=f"hedef_sure_{i}"
-            )
+            tutar = col_h1.number_input("Hedef Tutar (TL)", min_value=0, value=0, step=1000, key=f"hedef_tutar_{i}")
+            butce = col_h2.number_input("Aylık Bütçe (TL)", min_value=0, value=0, step=500, key=f"hedef_butce_{i}")
+            sure = col_h3.number_input("Süre (ay)", min_value=1, value=12, step=1, key=f"hedef_sure_{i}")
             if ad:
-                hedefler.append({
-                    "ad": ad,
-                    "hedef_tutar": tutar,
-                    "aylik_butce": butce,
-                    "sure_ay": sure
-                })
+                hedefler.append({"ad": ad, "hedef_tutar": tutar, "aylik_butce": butce, "sure_ay": sure})
 
     if st.button("💾 Profili Kaydet ve Analiz Et", type="primary"):
+        gercek_aylik_gelir = aylik_gelir + ek_gelir_tutar
         with st.spinner("Profil kaydediliyor..."):
             resp = requests.post(
                 f"{API_URL}/profile",
                 json={
                     "session_id": st.session_state["session_id"],
                     "gelir_kaynak": gelir_kaynak,
-                    "aylik_gelir": aylik_gelir,
-                    "ek_gelir": ek_gelir or "Yok",
-                    "borclar": borclar or "Belirtilmedi",
-                    "yatirimlar": ", ".join(yatirimlar) if yatirimlar else "Belirtilmedi",
+                    "aylik_gelir": gercek_aylik_gelir,
+                    "ek_gelir": f"{ek_gelir_ad} ({ek_gelir_tutar:,.0f} TL/ay)" if ek_gelir_ad else "Yok",
+                    "borclar": str(borc_tutar),
+                    "yatirimlar": yatirim_turu,
+                    "yatirim_tutar": yatirim_tutar,
+                    "birikim_tutar": birikim_tutar,
+                    "nakit_tutar": nakit_tutar,
+                    "borc_tutar": borc_tutar,
                     "hedefler": hedefler
                 }
             )
@@ -452,38 +433,22 @@ elif page == "🎯 Profil & Hedefler":
                 st.session_state["budget_plan"] = data.get("budget_plan", {})
                 st.success("✅ Profil kaydedildi!")
 
-                plan = data.get("budget_plan", {})
+                plan = data.get("budget_plan", {}) or {}
                 st.subheader("Bütçe Analizi")
 
                 col_p1, col_p2, col_p3, col_p4 = st.columns(4)
-                col_p1.metric(
-                "Mevcut Tasarruf",
-                    f"{plan.get('mevcut_tasarruf', 0):,.0f} TL/ay"
-                    )
+                col_p1.metric("Mevcut Tasarruf", f"{plan.get('mevcut_tasarruf', 0):,.0f} TL/ay")
                 ideal = plan.get("ideal_dagilim", {})
-                col_p2.metric(
-                "İdeal Tasarruf (20%)",
-                    f"{ideal.get('tasarruf_20', 0):,.0f} TL/ay"
-                    )
-                col_p3.metric(
-                "Genel Durum",
-                plan.get("genel_durum", "").capitalize()
-                    )
-                col_p4.metric(
-                "Net Servet",
-                    f"{plan.get('net_servet', 0):,.0f} TL"
-                    )
+                col_p2.metric("İdeal Tasarruf (20%)", f"{ideal.get('tasarruf_20', 0):,.0f} TL/ay")
+                col_p3.metric("Genel Durum", plan.get("genel_durum", "").capitalize())
+                col_p4.metric("Net Servet", f"{plan.get('net_servet', 0):,.0f} TL")
 
-                # Hedef analizi
                 hedef_analizi = plan.get("hedef_analizi", [])
                 if hedef_analizi:
                     st.subheader("Hedef İlerleme")
                     for h in hedef_analizi:
                         if h.get("hedef_tutar") and h.get("gercekci_sure_ay"):
-                            ilerleme = min(
-                                plan.get("mevcut_tasarruf", 0) /
-                                h["hedef_tutar"], 1.0
-                            )
+                            ilerleme = min(plan.get("mevcut_tasarruf", 0) / h["hedef_tutar"], 1.0)
                             st.caption(f"🎯 {h['ad']}")
                             st.progress(ilerleme)
                             st.caption(
@@ -493,33 +458,22 @@ elif page == "🎯 Profil & Hedefler":
             else:
                 st.error(f"Hata: {resp.text}")
 
-# ── Sayfa 5: Senaryo ─────────────────────────────────────────
+# Sayfa 5: Senaryo
 elif page == "🔮 Senaryo":
     st.title("🔮 Harcama Simülasyonu")
-    st.caption(
-        "Yapmayı düşündüğünüz bir harcamanın bütçenize etkisini "
-        "önceden hesaplayın."
-    )
+    st.caption("Yapmayı düşündüğünüz bir harcamanın bütçenize etkisini önceden hesaplayın.")
 
     if "session_id" not in st.session_state:
         st.warning("Önce ekstre yükleyin.")
         st.stop()
 
-    # Hızlı seçim
     st.subheader("Hızlı Senaryo Seç")
     hizli = st.selectbox(
         "Hazır senaryolardan seçin veya kendiniz girin:",
-        [
-            "Kendiniz girin...",
-            "Yurt dışı tatil — 15.000 TL",
-            "Yeni telefon — 25.000 TL",
-            "Spor salonu + takviye — 2.000 TL/ay",
-            "Araba bakım — 8.000 TL",
-            "Kurs / eğitim — 5.000 TL",
-        ]
+        ["Kendiniz girin...", "Yurt dışı tatil — 15.000 TL", "Yeni telefon — 25.000 TL",
+         "Spor salonu + takviye — 2.000 TL/ay", "Araba bakım — 8.000 TL", "Kurs / eğitim — 5.000 TL"]
     )
 
-    # Seçime göre otomatik doldur
     defaults = {
         "Yurt dışı tatil — 15.000 TL": ("Yurt dışı tatil", 15000),
         "Yeni telefon — 25.000 TL": ("Yeni telefon", 25000),
@@ -534,38 +488,19 @@ elif page == "🔮 Senaryo":
 
     col1, col2 = st.columns(2)
     with col1:
-        senaryo_ad = st.text_input(
-            "Harcama adı",
-            value=default_ad,
-            placeholder="Örn: Yurt dışı tatil"
-        )
+        senaryo_ad = st.text_input("Harcama adı", value=default_ad, placeholder="Örn: Yurt dışı tatil")
         senaryo_tutar = st.number_input(
-            "Harcama tutarı (TL)",
-            min_value=0,
-            value=default_tutar,
-            step=500,
+            "Harcama tutarı (TL)", min_value=0, value=default_tutar, step=500,
             help="Tek seferlik veya aylık harcama tutarını girin"
         )
-
     with col2:
         hedef_tutar = st.number_input(
-            "Birikim hedefiniz (TL) — opsiyonel",
-            min_value=0,
-            value=0,
-            step=1000,
-            help="Hedefiniz varsa girin. Bu harcamanın hedefinizi nasıl etkilediğini gösterir."
+            "Birikim hedefiniz (TL) — opsiyonel", min_value=0, value=0, step=1000,
+            help="Hedefiniz varsa girin."
         )
-        sure_ay = st.number_input(
-            "Hedefe ulaşmak istediğiniz süre (ay)",
-            min_value=1,
-            value=12,
-            step=1
-        )
+        sure_ay = st.number_input("Hedefe ulaşmak istediğiniz süre (ay)", min_value=1, value=12, step=1)
 
-    st.info(
-        "💡 Bu araç, yapmayı düşündüğünüz harcamanın aylık tasarrufunuzu "
-        "ve birikim hedefinizi nasıl etkileyeceğini hesaplar."
-    )
+    st.info("💡 Bu araç, yapmayı düşündüğünüz harcamanın aylık tasarrufunuzu ve birikim hedefinizi nasıl etkileyeceğini hesaplar.")
 
     if st.button("🔮 Simüle Et", type="primary"):
         if not senaryo_ad or senaryo_tutar == 0:
@@ -586,35 +521,17 @@ elif page == "🔮 Senaryo":
                 if resp.status_code == 200:
                     data = resp.json()
                     etki = data.get("etki_seviyesi", "")
-                    renk = {
-                        "minimal": "success",
-                        "düşük": "success",
-                        "orta": "warning",
-                        "yüksek": "warning",
-                        "kritik": "error"
-                    }.get(etki, "info")
-
-                    getattr(st, renk)(
-                        f"Etki: {etki.upper()} — {data.get('tavsiye', '')}"
-                    )
+                    renk = {"minimal": "success", "düşük": "success", "orta": "warning",
+                            "yüksek": "warning", "kritik": "error"}.get(etki, "info")
+                    getattr(st, renk)(f"Etki: {etki.upper()} — {data.get('tavsiye', '')}")
 
                     col_s1, col_s2, col_s3 = st.columns(3)
                     mevcut = data.get("mevcut_durum", {})
                     senaryo = data.get("senaryo_sonrasi", {})
-
-                    col_s1.metric(
-                        "Mevcut Aylık Tasarruf",
-                        f"{mevcut.get('aylik_tasarruf', 0):,.0f} TL"
-                    )
-                    col_s2.metric(
-                        "Senaryo Sonrası Tasarruf",
-                        f"{senaryo.get('aylik_tasarruf', 0):,.0f} TL",
-                        delta=f"-{senaryo_tutar:,.0f} TL"
-                    )
-                    col_s3.metric(
-                        "Yıllık Etki",
-                        f"{senaryo.get('fark', 0):,.0f} TL kayıp"
-                    )
+                    col_s1.metric("Mevcut Aylık Tasarruf", f"{mevcut.get('aylik_tasarruf', 0):,.0f} TL")
+                    col_s2.metric("Senaryo Sonrası", f"{senaryo.get('aylik_tasarruf', 0):,.0f} TL",
+                                  delta=f"-{senaryo_tutar:,.0f} TL")
+                    col_s3.metric("Yıllık Etki", f"{senaryo.get('fark', 0):,.0f} TL kayıp")
 
                     h = data.get("hedef_analizi")
                     if h and h.get("mevcut_sure_ay"):
@@ -628,16 +545,18 @@ elif page == "🔮 Senaryo":
                 else:
                     st.error(f"Hata: {resp.text}")
 
-# ── Sayfa 6: İşlem Ekle ──────────────────────────────────────
-elif page == "✏️ İşlem Ekle":
-    st.title("✏️ Doğal Dil ile İşlem Ekle")
-    st.caption("PDF olmadan da harcama girebilirsiniz.")
+# Sayfa 6: Günlük İşlem Ekle
+elif page == "📝 Günlük İşlem Ekle":
+    st.title("📝 Günlük İşlem Ekle")
+    st.caption("PDF olmadan da harcama veya gelir girebilirsiniz. Sistem anlık olarak öğrenir.")
 
     if "session_id" not in st.session_state:
         st.warning("Önce ekstre yükleyin.")
         st.stop()
 
-    st.subheader("Harcamanızı yazın")
+    st.subheader("İşleminizi yazın")
+    st.caption("Hem harcama hem gelir girebilirsiniz.")
+
     ornek = st.selectbox(
         "Örnek seçin veya kendiniz yazın:",
         [
@@ -647,6 +566,9 @@ elif page == "✏️ İşlem Ekle":
             "Shell'den 1200 TL benzin aldım",
             "Netflix aboneliği 349 TL çekti",
             "Doktora 600 TL ödedim",
+            "Bugün 500 TL harçlık aldım",
+            "Freelance iş için 2000 TL ödeme aldım",
+            "Komşuya verdiğim 800 TL geri geldi",
         ]
     )
 
@@ -664,10 +586,7 @@ elif page == "✏️ İşlem Ekle":
             with st.spinner("Parse ediliyor..."):
                 resp = requests.post(
                     f"{API_URL}/nlp-transaction",
-                    json={
-                        "session_id": st.session_state["session_id"],
-                        "text": text
-                    }
+                    json={"session_id": st.session_state["session_id"], "text": text}
                 )
 
                 if resp.status_code == 200:
@@ -682,9 +601,22 @@ elif page == "✏️ İşlem Ekle":
                         col_r3.metric("Kategori", parsed.get("kategori", "-").capitalize())
                         col_r4.metric("Yer", parsed.get("yer") or "Belirtilmedi")
 
-                        st.success(
-                            f"✅ '{parsed.get('aciklama')}' işlemi "
-                            f"{'kaydedildi.' if saved else 'parse edildi.'}"
-                        )
+                        tur = parsed.get("tur", "gider")
+                        if tur == "gelir":
+                            st.success(f"✅ '{parsed.get('aciklama')}' gelir işlemi kaydedildi.")
+                        else:
+                            st.success(f"✅ '{parsed.get('aciklama')}' gider işlemi kaydedildi.")
+                        updated_cats = data.get("updated_categories", {})
+                        if updated_cats:
+                            st.subheader("📊 Güncel Harcama Durumu")
+                            st.caption("Bu işlem analize yansıtıldı.")
+                            df = pd.DataFrame(
+                                list(updated_cats.items()),
+                                columns=["Kategori", "Tutar (TL)"]
+                            ).sort_values("Tutar (TL)", ascending=False)
+                            st.dataframe(df, use_container_width=True, hide_index=True)
+
+                            if "result" in st.session_state:
+                                st.session_state["result"]["categories"] = updated_cats
                 else:
                     st.error(f"Hata: {resp.text}")

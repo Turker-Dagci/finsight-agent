@@ -62,10 +62,6 @@ def save_category_correction(
         return False
 
 def get_learned_category(aciklama: str) -> str | None:
-    """
-    Daha önce öğrenilmiş bir kategori var mı kontrol eder.
-    Varsa döndürür, yoksa None.
-    """
     from utils.gemini import get_embedding
     try:
         client = get_qdrant_client()
@@ -74,12 +70,12 @@ def get_learned_category(aciklama: str) -> str | None:
             return None
 
         vector = get_embedding(aciklama)
-        results = client.search(
+        results = client.query_points(
             collection_name=LEARNING_COLLECTION,
-            query_vector=vector,
+            query=vector,
             limit=1,
             score_threshold=0.92
-        )
+        ).points
 
         if results:
             kategori = results[0].payload.get("dogru_kategori")

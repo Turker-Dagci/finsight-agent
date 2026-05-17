@@ -322,14 +322,62 @@ async def nlp_transaction(request: Request, nlp_req: NLPRequest):
         raise HTTPException(404, "Session bulunamadı.")
 
     from agents.nlp_parser import parse_natural_language, save_nlp_transaction
+    from agents.analyst_agent import categorize_transactions
 
     parsed = parse_natural_language(nlp_req.text)
     saved = save_nlp_transaction(parsed, nlp_req.session_id)
 
+    # Mevcut analizi güncelle
+    cached = session_store[nlp_req.session_id].get("result", {})
+    if cached and saved:
+        mevcut_transactions = cached.get("transactions", []) or []
+
+        # Yeni işlemi listeye ekle
+        yeni_islem = {
+            "tarih": parsed.get("tarih"),
+            "aciklama": parsed.get("aciklama"),
+            "tutar": -abs(parsed.get("tutar", 0)) if parsed.get("tur") == "gider"
+                     else abs(parsed.get("tutar", 0)),
+            "tur": parsed.get("tur", "gider"),
+            "kategori": parsed.get("kategori", "diger"),
+        }
+        mevcut_transactions.append(yeni_islem)
+
+        # Kategorileri yeniden hesapla
+        yeni_kategoriler = categorize_transactions(mevcut_transactions)
+
+        # Özeti güncelle
+        mevcut_summary = cached.get("parsed_summary", {}) or {}
+        if parsed.get("tur") == "gider":
+            mevcut_summary["toplam_gider"] = (
+                (mevcut_summary.get("toplam_gider") or 0) +
+                abs(parsed.get("tutar", 0))
+            )
+        else:
+            mevcut_summary["toplam_gelir"] = (
+                (mevcut_summary.get("toplam_gelir") or 0) +
+                abs(parsed.get("tutar", 0))
+            )
+
+        # Cache'i güncelle
+        session_store[nlp_req.session_id]["result"]["transactions"] = mevcut_transactions
+        session_store[nlp_req.session_id]["result"]["categories"] = yeni_kategoriler
+        session_store[nlp_req.session_id]["result"]["parsed_summary"] = mevcut_summary
+        save_sessions(session_store)
+
+        logger.info(
+            f"Canlı güncelleme: {parsed.get('aciklama')} — "
+            f"yeni kategori toplamları hesaplandı"
+        )
+
     return {
         "session_id": nlp_req.session_id,
         "parsed": parsed,
-        "saved": saved
+        "saved": saved,
+        "live_update": cached is not None,
+        "updated_categories": session_store[nlp_req.session_id].get(
+            "result", {}
+        ).get("categories", {})
     }
 
 @app.get("/session/{session_id}")
