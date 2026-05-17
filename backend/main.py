@@ -16,6 +16,7 @@ from utils.sanitizer import sanitize_query
 
 from utils.financial_profile import calculate_budget_plan, build_profile_context
 from utils.scenario_planner import simulate_scenario
+from utils.category_learning import save_category_correction
 
 logger = setup_logger("api")
 
@@ -40,6 +41,22 @@ app.add_middleware(
 UPLOAD_DIR = "uploads"
 SESSION_FILE = "session_store.json"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+class CategoryCorrectionRequest(BaseModel):
+    aciklama: str
+    eski_kategori: str
+    yeni_kategori: str
+
+@app.post("/correct-category")
+@limiter.limit("30/minute")
+async def correct_category(request: Request, correction: CategoryCorrectionRequest):
+    """Kullanıcının kategori düzeltmesini öğren."""
+    success = save_category_correction(
+        aciklama=correction.aciklama,
+        eski_kategori=correction.eski_kategori,
+        yeni_kategori=correction.yeni_kategori
+    )
+    return {"success": success, "mesaj": "Kategori öğrenildi."}
 
 def load_sessions() -> dict:
     if os.path.exists(SESSION_FILE):

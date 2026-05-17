@@ -218,6 +218,35 @@ elif page == "📊 Analiz":
 
     st.divider()
 
+    # Kategori düzeltme
+with st.expander("✏️ Kategori Düzelt"):
+    st.caption("Yanlış kategorize edilen işlemi düzeltin, sistem öğrenir.")
+    col_k1, col_k2, col_k3 = st.columns(3)
+    islem_adi = col_k1.text_input("İşlem adı", placeholder="Shell Yakıt")
+    eski_kat = col_k2.selectbox(
+        "Mevcut kategori",
+        ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"]
+    )
+    yeni_kat = col_k3.selectbox(
+        "Doğru kategori",
+        ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"],
+        index=1
+    )
+    if st.button("💾 Düzeltmeyi Kaydet"):
+        if islem_adi:
+            resp = requests.post(
+                f"{API_URL}/correct-category",
+                json={
+                    "aciklama": islem_adi,
+                    "eski_kategori": eski_kat,
+                    "yeni_kategori": yeni_kat
+                }
+            )
+            if resp.status_code == 200:
+                st.success("✅ Sistem bu düzeltmeyi öğrendi!")
+        else:
+            st.warning("İşlem adı girin.")
+
     # Döviz kalkanı
     fx = result.get("fx_shield", {})
     if fx:
