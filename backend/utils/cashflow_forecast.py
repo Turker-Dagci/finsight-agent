@@ -19,7 +19,7 @@ def forecast_cashflow(
     ayin_kalan_gunu = gun_sayisi - bugun.day
 
     gelir = parsed_summary.get("toplam_gelir", 0) or 0
-    gider = parsed_summary.get("toplam_gider", 0) or 0
+    gider = abs(parsed_summary.get("toplam_gider", 0) or 0)
     gunluk_ortalama_gider = gider / 30 if gider > 0 else 0
 
     # Kalan günlük gider tahmini
