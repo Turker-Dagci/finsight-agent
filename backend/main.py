@@ -162,6 +162,7 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
 
     result = graph.invoke(state)
 
+    # Canlı piyasa verisi
     try:
         market = get_market_context()
         bist_aylik = market.get("ozet", {}).get("bist_aylik", 0)
@@ -187,7 +188,6 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
         "behavioral_insights": result.get("behavioral_insights") or [],
         "predicted_expenses": result.get("predicted_expenses") or {},
         "cashflow_forecast": result.get("cashflow_forecast") or {},
-        "tax_total": (result.get("tax_breakdown") or {}).get("TOPLAM", {}).get("toplam_vergi", 0),
         "bist_aylik": bist_aylik,
         "mevduat_faizi": mevduat_faizi,
     }
@@ -197,7 +197,12 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
     save_sessions(session_store)
     logger.info(f"Analiz tamamlandı — session: {session_id[:8]}")
 
-    return {**result_data, "session_id": session_id, "status": "analyzed"}
+    return {
+        **result_data,
+        "session_id": session_id,
+        "status": "analyzed",
+        "tax_total": (result.get("tax_breakdown") or {}).get("TOPLAM", {}).get("toplam_vergi", 0),
+    }
 
 
 @app.post("/query")

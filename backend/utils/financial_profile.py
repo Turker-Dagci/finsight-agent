@@ -18,7 +18,7 @@ def calculate_budget_plan(
     aylik_yatirim_getirisi = 0
     yatirim_detay = []
 
-    # Çoklu yatırım listesi
+    # Çoklu yatırım listesi (yeni format)
     yatirim_listesi = profile.get("yatirim_listesi", []) or []
     if investment_returns and yatirim_listesi:
         for yatirim in yatirim_listesi:
@@ -36,6 +36,8 @@ def calculate_budget_plan(
                     "risk": bilgi.get("risk", "orta"),
                     "aciklama": bilgi.get("aciklama", ""),
                 })
+
+    # Eski tek tutar format (geriye dönük uyumluluk)
     elif investment_returns and profile.get("yatirim_tutar", 0):
         yatirim_tutar = profile.get("yatirim_tutar", 0) or 0
         yatirim_turu = profile.get("yatirimlar", "")
@@ -66,14 +68,24 @@ def calculate_budget_plan(
                 "risk": "düşük",
             })
 
+    # Gerçek aylık gelir
     gercek_aylik_gelir = aylik_gelir + round(aylik_yatirim_getirisi, 0)
     if gercek_aylik_gelir == 0:
         gercek_aylik_gelir = parsed_summary.get("toplam_gelir", 0) or 0
 
     mevcut_tasarruf = max(gercek_aylik_gelir - toplam_gider, 0)
 
-    # Net servet
+    # Net servet — tüm yatırım listesinin toplamı
     toplam_yatirim = sum(y.get("tutar", 0) for y in yatirim_listesi)
+    net_servet = round(
+        toplam_yatirim +
+        (profile.get("yatirim_tutar", 0) or 0) +
+        (profile.get("birikim_tutar", 0) or 0) +
+        (profile.get("nakit_tutar", 0) or 0) -
+        (profile.get("borc_tutar", 0) or 0),
+        0
+    )
+    # Duplicate önleme: liste varsa eski tek tutar sayılmasın
     if yatirim_listesi:
         net_servet = round(
             toplam_yatirim +
@@ -82,15 +94,8 @@ def calculate_budget_plan(
             (profile.get("borc_tutar", 0) or 0),
             0
         )
-    else:
-        net_servet = round(
-            (profile.get("yatirim_tutar", 0) or 0) +
-            (profile.get("birikim_tutar", 0) or 0) +
-            (profile.get("nakit_tutar", 0) or 0) -
-            (profile.get("borc_tutar", 0) or 0),
-            0
-        )
 
+    # 50/30/20 kuralı
     ideal_zorunlu = gercek_aylik_gelir * 0.50
     ideal_istekler = gercek_aylik_gelir * 0.30
     ideal_tasarruf = gercek_aylik_gelir * 0.20
@@ -101,6 +106,7 @@ def calculate_budget_plan(
     mevcut_istekler = sum(categories.get(k, 0) for k in istek_kategoriler)
     mevcut_gida = categories.get("gida", 0)
 
+    # Hedef analizi
     hedef_analizi = []
     if hedefler:
         for hedef in hedefler:
@@ -187,12 +193,15 @@ def build_profile_context(profile: dict, budget_plan: dict) -> str:
             hedef_metni += f" ({h['hedef_tutar']:,.0f} TL)"
         if h.get("gercekci_sure_ay"):
             hedef_metni += f" — mevcut hızla {h['gercekci_sure_ay']} ayda ulaşılır"
+        if h.get("kismalar"):
+            for k in h["kismalar"]:
+                hedef_metni += f"\n  → {k['kategori']}'den {k['kesinti']:,.0f} TL kısılabilir"
 
     yatirim_metni = ""
     for y in budget_plan.get("yatirim_detay", []):
         yatirim_metni += (
             f"\n- {y['tur']}: {y['tutar']:,.0f} TL → "
-            f"aylık {y['aylik_getiri_tl']:,.0f} TL getiri"
+            f"aylık {y['aylik_getiri_tl']:,.0f} TL getiri (%{y['aylik_getiri_yuzde']})"
         )
 
     return f"""
@@ -202,9 +211,10 @@ FİNANSAL PROFİL:
 - Ek gelir: {profile.get('ek_gelir', 'Yok')}
 - Toplam borç: {profile.get('borclar', 'Belirtilmedi')}
 - Yatırımlar: {profile.get('yatirimlar', 'Belirtilmedi')}
-- Aylık yatırım getirisi: {budget_plan.get('aylik_yatirim_getirisi', 0):,.0f} TL
+
+YATIRIM GETİRİLERİ:{yatirim_metni if yatirim_metni else ' Belirtilmedi'}
+- Aylık toplam getiri: {budget_plan.get('aylik_yatirim_getirisi', 0):,.0f} TL
 - Net servet: {budget_plan.get('net_servet', 0):,.0f} TL
-{yatirim_metni}
 
 BÜTÇE DURUMU (50/30/20 Kuralı):
 - İdeal tasarruf: {budget_plan['ideal_dagilim']['tasarruf_20']:,.0f} TL/ay

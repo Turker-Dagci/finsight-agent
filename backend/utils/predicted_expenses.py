@@ -6,6 +6,13 @@ from datetime import datetime, timedelta
 logger = setup_logger("predicted_expenses")
 
 # Bilinen sabit gider kalıpları
+
+AY_TURKCE = {
+    1: "Ocak", 2: "Şubat", 3: "Mart", 4: "Nisan",
+    5: "Mayıs", 6: "Haziran", 7: "Temmuz", 8: "Ağustos",
+    9: "Eylül", 10: "Ekim", 11: "Kasım", 12: "Aralık"
+}
+
 SABIT_GIDERLER = {
     "kira": {"gun": 1, "aciklama": "Kira Ödemesi"},
     "elektrik": {"gun": 8, "aciklama": "Elektrik Faturası"},
@@ -52,7 +59,7 @@ def predict_upcoming_expenses(
                     )
                 if bugun <= tahmin_gun <= bitis:
                     tahminler.append({
-                        "tarih": tahmin_gun.strftime("%d %B"),
+                        "tarih": f"{tahmin_gun.day} {AY_TURKCE[tahmin_gun.month]}",
                         "aciklama": bilgi["aciklama"],
                         "tutar": round(tutar, 0),
                         "tur": "abonelik",
@@ -71,7 +78,7 @@ def predict_upcoming_expenses(
                     tahmin_gun = tahmin_gun.replace(year=bugun.year + 1, month=1)
             if bugun <= tahmin_gun <= bitis:
                 tahminler.append({
-                    "tarih": tahmin_gun.strftime("%d %B"),
+                    "tarih": f"{tahmin_gun.day} {AY_TURKCE[tahmin_gun.month]}",
                     "aciklama": bilgi["aciklama"],
                     "tutar": round(categories.get("kira", 0), 0),
                     "tur": "zorunlu",
@@ -88,7 +95,7 @@ def predict_upcoming_expenses(
                     tahmin_gun = tahmin_gun.replace(year=bugun.year + 1, month=1)
             if bugun <= tahmin_gun <= bitis:
                 tahminler.append({
-                    "tarih": tahmin_gun.strftime("%d %B"),
+                    "tarih": f"{tahmin_gun.day} {AY_TURKCE[tahmin_gun.month]}",
                     "aciklama": bilgi["aciklama"],
                     "tutar": round(fatura_tahmini, 0),
                     "tur": "zorunlu",
@@ -106,7 +113,7 @@ def predict_upcoming_expenses(
         "tahminler": tahminler,
         "toplam": round(toplam_tahmin, 0),
         "gun_sayisi": gun_sayisi,
-        "bitis_tarihi": bitis.strftime("%d %B %Y")
+        "bitis_tarihi": f"{bitis.day} {AY_TURKCE[bitis.month]} {bitis.year}"
     }
 
 
