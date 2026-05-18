@@ -128,7 +128,7 @@ elif page == "📊 Analiz":
     col2.metric("Toplam Gider", f"{gider:,.0f} TL")
     col3.metric("Net Tasarruf", f"{net:,.0f} TL",
                 delta=f"%{net/gelir*100:.1f}" if gelir > 0 else None)
-    col4.metric("Gizli Vergi", f"{vergi:,.0f} TL")
+    col4.metric("Vergi Yükü (KDV+ÖTV)", f"{vergi:,.0f} TL" if vergi > 0 else "Hesaplanıyor...")
 
     st.divider()
 
@@ -381,24 +381,36 @@ elif page == "🎯 Profil & Hedefler":
     with col2:
         borc_tutar = st.number_input("Toplam Borç (TL)", min_value=0, value=0, step=1000)
         yatirim_var = st.radio("Yatırımınız var mı?", ["Hayır", "Evet"], horizontal=True)
-        yatirim_tutar = 0
-        yatirim_turu = "Yok"
-        if yatirim_var == "Evet":
-            yatirim_turleri = st.multiselect(
-                "Yatırım türleri",
-                ["Döviz (USD/EUR)", "Altın", "Hisse Senedi", "Mevduat", "Kripto"]
-            )
-            yatirim_tutar = st.number_input(
-                "Toplam yatırım tutarı (TL)", min_value=0, value=0, step=5000
-            )
-            yatirim_turu = ", ".join(yatirim_turleri) if yatirim_turleri else "Belirtilmedi"
 
-        birikim_tutar = st.number_input(
-            "Faizli/Vadeli Birikim (TL)", min_value=0, value=0, step=1000
-        )
-        nakit_tutar = st.number_input(
-            "Nakit/Vadesiz Hesap (TL)", min_value=0, value=0, step=1000
-        )
+        yatirim_listesi = []
+        yatirimlar_str = "Yok"
+        toplam_yatirim = 0
+
+        if yatirim_var == "Evet":
+            st.caption("Her yatırım türü için ayrı tutar girin.")
+            YATIRIM_TURLERI = ["Döviz (USD/EUR)", "Altın", "Hisse Senedi", "Mevduat"]
+            for tur in YATIRIM_TURLERI:
+                col_y1, col_y2 = st.columns([2, 3])
+                with col_y1:
+                    secili = st.checkbox(tur, key=f"yatirim_cb_{tur}")
+                with col_y2:
+                    if secili:
+                        tutar = st.number_input(
+                            f"{tur} (TL)",
+                            min_value=0, value=0, step=5000,
+                            key=f"yatirim_tutar_{tur}"
+                        )
+                        if tutar > 0:
+                            yatirim_listesi.append({"tur": tur, "tutar": tutar})
+                            toplam_yatirim += tutar
+            if yatirim_listesi:
+                st.caption("Seçilen yatırımlar:")
+                for y in yatirim_listesi:
+                    st.markdown(f"• **{y['tur']}**: {y['tutar']:,.0f} TL")
+                yatirimlar_str = ", ".join([y['tur'] for y in yatirim_listesi])
+
+        birikim_tutar = st.number_input("Faizli/Vadeli Birikim (TL)", min_value=0, value=0, step=1000)
+        nakit_tutar = st.number_input("Nakit/Vadesiz Hesap (TL)", min_value=0, value=0, step=1000)
 
     st.subheader("Finansal Hedefleriniz")
     st.caption("En fazla 3 hedef ekleyebilirsiniz.")
@@ -426,22 +438,34 @@ elif page == "🎯 Profil & Hedefler":
                 json={
                     "session_id": st.session_state["session_id"],
                     "gelir_kaynak": gelir_kaynak,
-                    "aylik_gelir": gercek_aylik_gelir,
+                    "aylik_gelir": aylik_gelir + ek_gelir_tutar,
                     "ek_gelir": f"{ek_gelir_ad} ({ek_gelir_tutar:,.0f} TL/ay)" if ek_gelir_ad else "Yok",
                     "borclar": str(borc_tutar),
-                    "yatirimlar": yatirim_turu,
-                    "yatirim_tutar": yatirim_tutar,
+                    "yatirimlar": yatirimlar_str,
+                    "yatirim_tutar": toplam_yatirim,
+                    "yatirim_listesi": yatirim_listesi,
                     "birikim_tutar": birikim_tutar,
                     "nakit_tutar": nakit_tutar,
                     "borc_tutar": borc_tutar,
                     "hedefler": hedefler
-                }
-            )
+    }
+)
 
             if resp.status_code == 200:
                 data = resp.json()
                 st.session_state["budget_plan"] = data.get("budget_plan", {})
                 st.success("✅ Profil kaydedildi!")
+
+                if plan.get("aylik_yatirim_getirisi", 0) > 0:
+                    st.info(
+                        f"💹 Yatırımlarınızdan aylık tahmini "
+                        f"**{plan.get('aylik_yatirim_getirisi', 0):,.0f} TL** getiri hesaplandı."
+                    )
+                for y in plan.get("yatirim_detay", []):
+                    st.caption(
+                        f"• {y['tur']}: {y['tutar']:,.0f} TL → "
+                        f"aylık ~{y['aylik_getiri_tl']:,.0f} TL getiri"
+                    )
 
                 plan = data.get("budget_plan", {}) or {}
                 st.subheader("Bütçe Analizi")

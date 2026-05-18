@@ -4,6 +4,7 @@ from utils.logger import setup_logger
 
 logger = setup_logger("financial_profile")
 
+
 def calculate_budget_plan(
     profile: dict,
     categories: dict,
@@ -11,22 +12,35 @@ def calculate_budget_plan(
     hedefler: list = None,
     investment_returns: dict = None
 ) -> dict:
-    """
-    Kullanıcı profiline ve hedeflerine göre
-    kişiselleştirilmiş bütçe planı üretir.
-    """
     aylik_gelir = profile.get("aylik_gelir", 0) or 0
     toplam_gider = abs(parsed_summary.get("toplam_gider", 0) or 0)
 
-    # Yatırım getirisi hesapla
     aylik_yatirim_getirisi = 0
     yatirim_detay = []
 
-    if investment_returns and profile.get("yatirim_tutar", 0):
+    # Çoklu yatırım listesi
+    yatirim_listesi = profile.get("yatirim_listesi", []) or []
+    if investment_returns and yatirim_listesi:
+        for yatirim in yatirim_listesi:
+            tur = yatirim.get("tur", "")
+            tutar = yatirim.get("tutar", 0) or 0
+            if tur in investment_returns and tutar > 0:
+                bilgi = investment_returns[tur]
+                getiri = tutar * bilgi["aylik_getiri"] / 100
+                aylik_yatirim_getirisi += getiri
+                yatirim_detay.append({
+                    "tur": tur,
+                    "tutar": tutar,
+                    "aylik_getiri_yuzde": bilgi["aylik_getiri"],
+                    "aylik_getiri_tl": round(getiri, 0),
+                    "risk": bilgi.get("risk", "orta"),
+                    "aciklama": bilgi.get("aciklama", ""),
+                })
+    elif investment_returns and profile.get("yatirim_tutar", 0):
         yatirim_tutar = profile.get("yatirim_tutar", 0) or 0
         yatirim_turu = profile.get("yatirimlar", "")
         for tur, bilgi in investment_returns.items():
-            if tur in yatirim_turu:
+            if tur in yatirim_turu and yatirim_tutar > 0:
                 getiri = yatirim_tutar * bilgi["aylik_getiri"] / 100
                 aylik_yatirim_getirisi += getiri
                 yatirim_detay.append({
@@ -34,46 +48,59 @@ def calculate_budget_plan(
                     "tutar": yatirim_tutar,
                     "aylik_getiri_yuzde": bilgi["aylik_getiri"],
                     "aylik_getiri_tl": round(getiri, 0),
+                    "risk": bilgi.get("risk", "orta"),
                 })
 
-    # Mevduat getirisi
+    # Mevduat/birikim getirisi
     birikim_tutar = profile.get("birikim_tutar", 0) or 0
     if birikim_tutar > 0 and investment_returns:
         mevduat = investment_returns.get("Mevduat", {})
         birikim_getirisi = birikim_tutar * mevduat.get("aylik_getiri", 3.5) / 100
         aylik_yatirim_getirisi += birikim_getirisi
+        if birikim_getirisi > 0:
+            yatirim_detay.append({
+                "tur": "Mevduat/Birikim",
+                "tutar": birikim_tutar,
+                "aylik_getiri_yuzde": mevduat.get("aylik_getiri", 3.5),
+                "aylik_getiri_tl": round(birikim_getirisi, 0),
+                "risk": "düşük",
+            })
 
-    # Gerçek aylık gelir = maaş + yatırım getirisi
     gercek_aylik_gelir = aylik_gelir + round(aylik_yatirim_getirisi, 0)
-
-    # Gelir girilmemişse ekstreden al
     if gercek_aylik_gelir == 0:
         gercek_aylik_gelir = parsed_summary.get("toplam_gelir", 0) or 0
 
     mevcut_tasarruf = max(gercek_aylik_gelir - toplam_gider, 0)
 
     # Net servet
-    net_servet = round(
-        (profile.get("yatirim_tutar", 0) or 0) +
-        (profile.get("birikim_tutar", 0) or 0) +
-        (profile.get("nakit_tutar", 0) or 0) -
-        (profile.get("borc_tutar", 0) or 0),
-        0
-    )
+    toplam_yatirim = sum(y.get("tutar", 0) for y in yatirim_listesi)
+    if yatirim_listesi:
+        net_servet = round(
+            toplam_yatirim +
+            (profile.get("birikim_tutar", 0) or 0) +
+            (profile.get("nakit_tutar", 0) or 0) -
+            (profile.get("borc_tutar", 0) or 0),
+            0
+        )
+    else:
+        net_servet = round(
+            (profile.get("yatirim_tutar", 0) or 0) +
+            (profile.get("birikim_tutar", 0) or 0) +
+            (profile.get("nakit_tutar", 0) or 0) -
+            (profile.get("borc_tutar", 0) or 0),
+            0
+        )
 
-    # 50/30/20 kuralı
     ideal_zorunlu = gercek_aylik_gelir * 0.50
     ideal_istekler = gercek_aylik_gelir * 0.30
     ideal_tasarruf = gercek_aylik_gelir * 0.20
 
-    # Mevcut durum
     zorunlu_kategoriler = ["kira", "fatura", "saglik", "ulasim"]
     istek_kategoriler = ["eglence", "diger"]
     mevcut_zorunlu = sum(categories.get(k, 0) for k in zorunlu_kategoriler)
     mevcut_istekler = sum(categories.get(k, 0) for k in istek_kategoriler)
     mevcut_gida = categories.get("gida", 0)
 
-    # Hedef analizi
     hedef_analizi = []
     if hedefler:
         for hedef in hedefler:
@@ -120,8 +147,11 @@ def calculate_budget_plan(
                 "kismalar": kismalar,
             })
 
-    logger.info(f"Bütçe planı hazırlandı: {len(hedef_analizi)} hedef, "
-                f"yatırım getirisi: {aylik_yatirim_getirisi:,.0f} TL/ay")
+    logger.info(
+        f"Bütçe planı hazırlandı: {len(hedef_analizi)} hedef, "
+        f"yatırım getirisi: {aylik_yatirim_getirisi:,.0f} TL/ay, "
+        f"net servet: {net_servet:,.0f} TL"
+    )
 
     return {
         "aylik_gelir": gercek_aylik_gelir,
@@ -150,9 +180,6 @@ def calculate_budget_plan(
 
 
 def build_profile_context(profile: dict, budget_plan: dict) -> str:
-    """
-    Advisory Agent'a verilecek profil bağlamı metni.
-    """
     hedef_metni = ""
     for h in budget_plan.get("hedef_analizi", []):
         hedef_metni += f"\n- Hedef: {h['ad']}"
@@ -160,12 +187,13 @@ def build_profile_context(profile: dict, budget_plan: dict) -> str:
             hedef_metni += f" ({h['hedef_tutar']:,.0f} TL)"
         if h.get("gercekci_sure_ay"):
             hedef_metni += f" — mevcut hızla {h['gercekci_sure_ay']} ayda ulaşılır"
-        if h.get("kismalar"):
-            for k in h["kismalar"]:
-                hedef_metni += (
-                    f"\n  → {k['kategori']}'den "
-                    f"{k['kesinti']:,.0f} TL kısılabilir"
-                )
+
+    yatirim_metni = ""
+    for y in budget_plan.get("yatirim_detay", []):
+        yatirim_metni += (
+            f"\n- {y['tur']}: {y['tutar']:,.0f} TL → "
+            f"aylık {y['aylik_getiri_tl']:,.0f} TL getiri"
+        )
 
     return f"""
 FİNANSAL PROFİL:
@@ -174,6 +202,9 @@ FİNANSAL PROFİL:
 - Ek gelir: {profile.get('ek_gelir', 'Yok')}
 - Toplam borç: {profile.get('borclar', 'Belirtilmedi')}
 - Yatırımlar: {profile.get('yatirimlar', 'Belirtilmedi')}
+- Aylık yatırım getirisi: {budget_plan.get('aylik_yatirim_getirisi', 0):,.0f} TL
+- Net servet: {budget_plan.get('net_servet', 0):,.0f} TL
+{yatirim_metni}
 
 BÜTÇE DURUMU (50/30/20 Kuralı):
 - İdeal tasarruf: {budget_plan['ideal_dagilim']['tasarruf_20']:,.0f} TL/ay
@@ -182,63 +213,3 @@ BÜTÇE DURUMU (50/30/20 Kuralı):
 
 FİNANSAL HEDEFLER:{hedef_metni if hedef_metni else ' Belirtilmedi'}
 """
-
-
-if __name__ == "__main__":
-    test_profile = {
-        "gelir_kaynak": "Maaş",
-        "aylik_gelir": 42000,
-        "ek_gelir": "Yok",
-        "borclar": "50.000 TL kredi",
-        "yatirimlar": "Döviz",
-    }
-    test_categories = {
-        "gida": 5411.5,
-        "ulasim": 6450.0,
-        "eglence": 1379.97,
-        "fatura": 3840.0,
-        "kira": 12000.0,
-    }
-    test_summary = {
-        "toplam_gelir": 42000.0,
-        "toplam_gider": 35994.46
-    }
-    test_hedefler = [
-        {
-            "ad": "Yurt Dışı Tatil",
-            "hedef_tutar": 30000,
-            "aylik_butce": 3000,
-            "sure_ay": 10
-        },
-        {
-            "ad": "Acil Durum Fonu",
-            "hedef_tutar": 50000,
-            "aylik_butce": 5000,
-            "sure_ay": 12
-        }
-    ]
-
-    plan = calculate_budget_plan(
-        test_profile, test_categories,
-        test_summary, test_hedefler
-    )
-
-    print(f"Aylık Gelir    : {plan['aylik_gelir']:,.0f} TL")
-    print(f"Mevcut Tasarruf: {plan['mevcut_tasarruf']:,.0f} TL")
-    print(f"Genel Durum    : {plan['genel_durum']}")
-    print(f"\n50/30/20 İdeal Dağılım:")
-    for k, v in plan["ideal_dagilim"].items():
-        print(f"  {k:20}: {v:,.0f} TL")
-    print(f"\nHedef Analizi:")
-    for h in plan["hedef_analizi"]:
-        print(f"\n  [{h['ad']}]")
-        print(f"  Hedef tutar    : {h['hedef_tutar']:,.0f} TL")
-        print(f"  Mevcut hızla   : {h['gercekci_sure_ay']} ay")
-        print(f"  Hedef süre     : {h['sure_ay']} ay")
-        if h.get("kismalar"):
-            print(f"  Kısma önerileri:")
-            for k in h["kismalar"]:
-                print(f"    → {k['kategori']}: {k['kesinti']:,.0f} TL")
-
-    print(f"\nProfil Bağlamı:")
-    print(build_profile_context(test_profile, plan))

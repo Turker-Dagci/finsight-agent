@@ -63,6 +63,10 @@ def parse_pdf(file_path: str) -> dict:
             mime_type="application/pdf"
         )
 
+        if not raw_text or not raw_text.strip():
+            logger.error("Gemini boş yanıt döndürdü — retry sonrası hata")
+            return {}
+
         logger.info(f"Gemini yanıtı alındı: {len(raw_text)} karakter")
 
         if raw_text.startswith("```"):
