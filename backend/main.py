@@ -17,6 +17,7 @@ from utils.sanitizer import sanitize_query
 from utils.financial_profile import calculate_budget_plan, build_profile_context
 from utils.scenario_planner import simulate_scenario
 from utils.category_learning import save_category_correction
+from utils.context_fetcher import get_market_context
 
 logger = setup_logger("api")
 
@@ -276,17 +277,21 @@ async def save_profile(request: Request, profile_req: FinancialProfileRequest):
         "ek_gelir": profile_req.ek_gelir,
         "borclar": profile_req.borclar,
         "yatirimlar": profile_req.yatirimlar,
-        "yatirim_tutar": profile_req.yatirim_tutar,  
-        "birikim_tutar": profile_req.birikim_tutar, 
-        "nakit_tutar": profile_req.nakit_tutar,  
-        "borc_tutar": profile_req.borc_tutar,       
+        "yatirim_tutar": profile_req.yatirim_tutar,
+        "birikim_tutar": profile_req.birikim_tutar,
+        "nakit_tutar": profile_req.nakit_tutar,
+        "borc_tutar": profile_req.borc_tutar,
     }
+
+    market = get_market_context()
+    investment_returns = market.get("yatirim_getirileri", {})
 
     budget_plan = calculate_budget_plan(
         profile=profile,
         categories=cached.get("categories", {}),
         parsed_summary=cached.get("parsed_summary", {}),
-        hedefler=profile_req.hedefler
+        hedefler=profile_req.hedefler,
+        investment_returns=investment_returns
     )
 
     session_store[profile_req.session_id]["profile"] = profile
