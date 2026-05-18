@@ -11,7 +11,7 @@ load_dotenv()
 
 def calculate_fx_shield(parsed_summary: dict, exchange_rates: dict) -> dict:
     """Döviz kalkanı analizi — aylık harcamanın döviz karşılığı."""
-    toplam_gider = parsed_summary.get("toplam_gider", 0)
+    toplam_gider = abs(parsed_summary.get("toplam_gider", 0) or 0)
     usd_rate = exchange_rates.get("USD", {}).get("satis", 38.7)
     eur_rate = exchange_rates.get("EUR", {}).get("satis", 42.4)
 

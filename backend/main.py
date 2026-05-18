@@ -245,6 +245,11 @@ class FinancialProfileRequest(BaseModel):
     borclar: Optional[str] = "Belirtilmedi"
     yatirimlar: Optional[str] = "Belirtilmedi"
     hedefler: Optional[list] = []
+    yatirim_tutar: Optional[float] = 0 
+    birikim_tutar: Optional[float] = 0
+    nakit_tutar: Optional[float] = 0   
+    borc_tutar: Optional[float] = 0
+    hedefler: Optional[list] = []
 
 class ScenarioRequest(BaseModel):
     session_id: str
@@ -271,6 +276,10 @@ async def save_profile(request: Request, profile_req: FinancialProfileRequest):
         "ek_gelir": profile_req.ek_gelir,
         "borclar": profile_req.borclar,
         "yatirimlar": profile_req.yatirimlar,
+        "yatirim_tutar": profile_req.yatirim_tutar,  
+        "birikim_tutar": profile_req.birikim_tutar, 
+        "nakit_tutar": profile_req.nakit_tutar,  
+        "borc_tutar": profile_req.borc_tutar,       
     }
 
     budget_plan = calculate_budget_plan(

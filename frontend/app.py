@@ -119,7 +119,7 @@ elif page == "📊 Analiz":
 
     # Özet metrikler
     gelir = summary.get("toplam_gelir") or 0
-    gider = summary.get("toplam_gider") or 0
+    gider = abs(summary.get("toplam_gider") or 0)
     net = gelir - gider
     vergi = result.get("tax_total") or 0
 
@@ -498,7 +498,11 @@ elif page == "🔮 Senaryo":
             "Birikim hedefiniz (TL) — opsiyonel", min_value=0, value=0, step=1000,
             help="Hedefiniz varsa girin."
         )
-        sure_ay = st.number_input("Hedefe ulaşmak istediğiniz süre (ay)", min_value=1, value=12, step=1)
+        sure_ay = st.number_input(
+    "Ne kadar sürecek ? (ay)",
+    min_value=1, value=12, step=1,
+    help="Örn: 12 = 1 yıl, 6 = 6 ay"
+)
 
     st.info("💡 Bu araç, yapmayı düşündüğünüz harcamanın aylık tasarrufunuzu ve birikim hedefinizi nasıl etkileyeceğini hesaplar.")
 

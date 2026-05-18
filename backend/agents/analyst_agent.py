@@ -119,7 +119,6 @@ def detect_subscriptions(transactions: list) -> list:
     return subscriptions
 
 def run_analyst(transactions: list, parsed_summary: dict) -> dict:
-    """Tüm analiz modüllerini çalıştırır ve sonucu döner."""
     logger.info("Kategorilendirme başladı")
     categories = categorize_transactions(transactions)
 
@@ -135,6 +134,9 @@ def run_analyst(transactions: list, parsed_summary: dict) -> dict:
     logger.info("Abonelik tespiti başladı")
     subscriptions = detect_subscriptions(transactions)
 
+    # Davranışsal koçluk — bu satır eksikti
+    behavioral_insights = generate_behavioral_insights(transactions, categories)
+
     toplam_gider = sum(categories.values())
     toplam_gelir = parsed_summary.get("toplam_gelir", 0)
 
@@ -143,8 +145,8 @@ def run_analyst(transactions: list, parsed_summary: dict) -> dict:
         "inflation_analysis": inflation,
         "tax_breakdown": tax,
         "anomalies": anomalies,
-        "behavioral_insights": behavioral_insights,
         "subscriptions": subscriptions,
+        "behavioral_insights": behavioral_insights,
         "ozet": {
             "toplam_gelir": toplam_gelir,
             "toplam_gider": round(toplam_gider, 2),

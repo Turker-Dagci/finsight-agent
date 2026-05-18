@@ -198,22 +198,23 @@ def subscription_optimizer_node(state: FinSightState) -> dict:
 
 # Mevcut route_step'i bu yeni versiyonla değiştir
 def route_after_analyst(state: FinSightState) -> str:
-    """
-    Analyst sonucuna göre dinamik routing.
-    Gerçek agentic karar verme burada.
-    """
-    anomalies = state.get("anomalies", [])
-    subscriptions = state.get("subscriptions", [])
-    categories = state.get("categories", {})
+    anomalies = state.get("anomalies") or []
+    subscriptions = state.get("subscriptions") or []
+    categories = state.get("categories") or {}
 
     toplam_gider = sum(categories.values()) if categories else 0
     toplam_abone = sum(s["tutar"] for s in subscriptions) if subscriptions else 0
 
-    # Abonelik yükü %15'i geçiyorsa optimizer devreye girer
     if toplam_gider > 0 and toplam_abone / toplam_gider > 0.15:
-        logger.info(f"Abonelik yükü yüksek (%{toplam_abone/toplam_gider*100:.1f}) "
-                   f"— Subscription Optimizer devreye giriyor")
+        logger.info(f"Abonelik yükü yüksek — Subscription Optimizer devreye giriyor")
         return "subscription_optimizer"
+
+    if len(anomalies) > 2:
+        logger.info(f"{len(anomalies)} anomali tespit edildi — direkt Advisory'e geçiliyor")
+        return "advisory"
+
+    logger.info("Normal akış — Advisory'e geçiliyor")
+    return "advisory"
 
     # Kritik anomali varsa direkt advisory
     if len(anomalies) > 2:
