@@ -243,6 +243,16 @@ elif page == "📊 Analiz":
 
     st.divider()
 
+    # Piyasa verileri
+    st.divider()
+    st.subheader("📈 Güncel Piyasa Verileri")
+
+    market_col1, market_col2, market_col3, market_col4 = st.columns(4)
+    market_col1.metric("USD/TL", f"{result.get('fx_shield', {}).get('usd_kur', 0):,.2f} TL")
+    market_col2.metric("EUR/TL", f"{result.get('fx_shield', {}).get('eur_kur', 0):,.2f} TL")
+    market_col3.metric("BIST100 Aylık", f"%{result.get('bist_aylik', 0):,.1f}")
+    market_col4.metric("Mevduat Faizi", f"%{result.get('mevduat_faizi', 0):,.1f}")
+
     # Öngörülen giderler
     predicted = result.get("predicted_expenses", {}) or {}
     if predicted and predicted.get("tahminler"):

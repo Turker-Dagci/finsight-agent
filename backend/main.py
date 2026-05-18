@@ -125,6 +125,9 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         "message": "Dosya yüklendi. /analyze endpoint'ini çağırın."
     }
 
+from utils.context_fetcher import get_market_context
+market = get_market_context()
+
 @app.post("/analyze")
 @limiter.limit("5/minute")
 async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl harcadım?"):
@@ -190,6 +193,8 @@ async def analyze(request: Request, session_id: str, query: str = "Bu ay nasıl 
         "awareness_message": result.get("awareness_message"),
         "tax_total": result.get("tax_breakdown", {}).get("TOPLAM", {}).get("toplam_vergi", 0),
         "final_response": result.get("final_response"),
+        "bist_aylik": market.get("ozet", {}).get("bist_aylik", 0),
+        "mevduat_faizi": market.get("ozet", {}).get("mevduat_faizi", 0),
         "behavioral_insights": result.get("behavioral_insights"),
         "predicted_expenses": result.get("predicted_expenses"),
         "cashflow_forecast": result.get("cashflow_forecast"),
