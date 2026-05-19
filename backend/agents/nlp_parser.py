@@ -55,6 +55,18 @@ def parse_natural_language(text: str) -> dict:
             raw = raw[4:]
     raw = raw.strip()
 
+    if not raw or not raw.strip():
+        logger.error("Gemini boş yanıt döndürdü")
+        return {
+            "tarih": str(__import__("datetime").date.today()),
+            "aciklama": "Parse edilemedi",
+            "tutar": 0.0,
+            "tur": "gider",
+            "kategori": "diger",
+            "yer": None,
+            "guven": "düşük"
+        }
+
     result = json.loads(raw)
     logger.info(
         f"NLP parse tamamlandı: {result.get('aciklama')} — "

@@ -350,24 +350,92 @@ async def nlp_transaction(request: Request, nlp_req: NLPRequest):
         save_sessions(session_store)
         logger.info(f"Canlı güncelleme: {parsed.get('aciklama')}")
 
+        # Tam analiz güncelleme
+        try:
+            from utils.health_score import calculate_health_score
+            from utils.awareness import get_awareness_message
+            from utils.cashflow_forecast import forecast_cashflow
+            from agents.analyst_agent import generate_behavioral_insights
+
+            new_health = calculate_health_score(
+                parsed_summary=mevcut_summary,
+                categories=yeni_kategoriler,
+                inflation_analysis=cached.get("inflation_analysis", {}),
+                subscriptions=cached.get("subscriptions", []),
+                anomalies=cached.get("anomalies", [])
+            )
+            new_awareness = get_awareness_message(
+                categories=yeni_kategoriler,
+                subscriptions=cached.get("subscriptions", []),
+                health_score=new_health.get("toplam_skor")
+            )
+            new_behavioral = generate_behavioral_insights(
+                mevcut_transactions, yeni_kategoriler
+            )
+            new_cashflow = forecast_cashflow(
+                parsed_summary=mevcut_summary,
+                categories=yeni_kategoriler,
+                predicted_expenses=cached.get("predicted_expenses", {})
+            )
+
+            session_store[nlp_req.session_id]["result"]["health_score"] = new_health
+            session_store[nlp_req.session_id]["result"]["awareness_message"] = new_awareness
+            session_store[nlp_req.session_id]["result"]["behavioral_insights"] = new_behavioral
+            session_store[nlp_req.session_id]["result"]["cashflow_forecast"] = new_cashflow
+            save_sessions(session_store)
+            logger.info(f"Tam analiz güncellendi — yeni sağlık skoru: {new_health.get('toplam_skor')}")
+
+        except Exception as e:
+            logger.error(f"Analiz güncelleme hatası: {str(e)}")
+
     return {
         "session_id": nlp_req.session_id,
         "parsed": parsed,
         "saved": saved,
         "live_update": cached is not None,
-        "updated_categories": session_store[nlp_req.session_id].get("result", {}).get("categories", {})
+        "updated_categories": session_store[nlp_req.session_id].get("result", {}).get("categories", {}),
+        "updated_health_score": session_store[nlp_req.session_id].get("result", {}).get("health_score", {}),
+        "updated_cashflow": session_store[nlp_req.session_id].get("result", {}).get("cashflow_forecast", {}),
     }
 
 
 @app.post("/correct-category")
 @limiter.limit("30/minute")
 async def correct_category(request: Request, correction: CategoryCorrectionRequest):
+    from agents.analyst_agent import categorize_transactions
+
     success = save_category_correction(
         aciklama=correction.aciklama,
         eski_kategori=correction.eski_kategori,
         yeni_kategori=correction.yeni_kategori
     )
-    return {"success": success, "mesaj": "Kategori öğrenildi."}
+
+    updated_categories = None
+    for session_id, session_data in session_store.items():
+        result = session_data.get("result", {})
+        transactions = result.get("transactions", []) or []
+
+        updated = False
+        for t in transactions:
+            aciklama = t.get("aciklama", "").lower()
+            aranan = correction.aciklama.lower()
+            if aranan in aciklama or aciklama in aranan:
+                t["kategori"] = correction.yeni_kategori
+                updated = True
+
+        if updated:
+            new_cats = categorize_transactions(transactions)
+            session_store[session_id]["result"]["transactions"] = transactions
+            session_store[session_id]["result"]["categories"] = new_cats
+            updated_categories = new_cats
+            save_sessions(session_store)
+            logger.info(f"Kategoriler güncellendi: {new_cats}")
+
+    return {
+        "success": success,
+        "mesaj": "Kategori öğrenildi ve işlemlere uygulandı.",
+        "updated_categories": updated_categories or {}
+    }
 
 
 @app.get("/session/{session_id}")

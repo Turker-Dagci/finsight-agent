@@ -50,7 +50,19 @@ def parser_node(state: FinSightState) -> dict:
         session_id = state.get("session_id") or str(uuid.uuid4())
 
         parsed = parse_pdf(file_path)
-        save_to_qdrant(parsed, session_id)
+
+        parsed = parse_pdf(state["file_path"])
+
+        if not parsed or not parsed.get("islemler"):
+            logger.error("Parser boş sonuç döndürdü — analiz durduruluyor")
+            return {
+                "errors": ["PDF parse başarısız. Gemini API meşgul olabilir. Lütfen 30 saniye bekleyip tekrar deneyin."],
+                "current_step": "done"
+            }
+        try:
+            save_to_qdrant(parsed, session_id)
+        except Exception as e:
+            logger.warning(f"Qdrant kayıt atlandı: {str(e)}")
 
         return {
             "session_id": session_id,

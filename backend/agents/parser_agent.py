@@ -90,7 +90,10 @@ def parse_pdf(file_path: str) -> dict:
 
 from google.genai import types as genai_types
 
-def save_to_qdrant(parsed_data: dict, session_id: str) -> int:
+def save_to_qdrant(parsed: dict, session_id: str):
+    if not parsed or not parsed.get("islemler"):
+        logger.warning("Boş parse sonucu — Qdrant'a kayıt atlanıyor")
+        return
     """Parse edilen işlemleri Qdrant'a kaydeder."""
     from qdrant_client import QdrantClient
     from qdrant_client.models import PointStruct
@@ -104,7 +107,7 @@ def save_to_qdrant(parsed_data: dict, session_id: str) -> int:
     collection = os.getenv("QDRANT_COLLECTION", "finsight_transactions")
     points = []
 
-    for islem in parsed_data.get("islemler", []):
+    for islem in parsed.get("islemler", []):
         # Embedding için metin oluştur
         text = f"{islem['tarih']} {islem['aciklama']} {islem['tutar']} TL {islem['kategori']}"
 
@@ -121,8 +124,8 @@ def save_to_qdrant(parsed_data: dict, session_id: str) -> int:
                 "tutar": islem["tutar"],
                 "tur": islem["tur"],
                 "kategori": islem["kategori"],
-                "hesap_sahibi": parsed_data.get("hesap_sahibi"),
-                "donem": parsed_data.get("donem"),
+                "hesap_sahibi": parsed.get("hesap_sahibi"),
+                "donem": parsed.get("donem"),
             }
         )
         points.append(point)

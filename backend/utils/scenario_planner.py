@@ -11,22 +11,19 @@ def simulate_scenario(
     hedef_tutar: float = None,
     sure_ay: int = 12
 ) -> dict:
-    """
-    "Ya şöyle olursa?" simülasyonu.
-    Tek seferlik veya aylık harcama senaryosu simüle eder.
-    """
-    aylik_gelir = parsed_summary.get("toplam_gelir", 0)
-    aylik_gider = parsed_summary.get("toplam_gider", 0)
+    aylik_gelir = parsed_summary.get("toplam_gelir", 0) or 0
+    aylik_gider = abs(parsed_summary.get("toplam_gider", 0) or 0)
     mevcut_tasarruf = max(aylik_gelir - aylik_gider, 0)
 
-    # Yıllık projeksiyon — mevcut hız
-    yillik_tasarruf_mevcut = mevcut_tasarruf * 12
-
-    # Senaryo sonrası
+    # Senaryo sonrası aylık tasarruf
     senaryo_tasarruf = max(mevcut_tasarruf - senaryo_tutar, 0)
+
+    # Süre bazlı toplam etki
+    sure_bazli_etki = senaryo_tutar * sure_ay
+    yillik_tasarruf_mevcut = mevcut_tasarruf * 12
     yillik_tasarruf_senaryo = senaryo_tasarruf * 12
 
-    # Enflasyon etkisi (%38 yıllık)
+    # Enflasyon etkisi
     enflasyon_orani = 0.38
     reel_mevcut = yillik_tasarruf_mevcut / (1 + enflasyon_orani)
     reel_senaryo = yillik_tasarruf_senaryo / (1 + enflasyon_orani)
@@ -34,28 +31,16 @@ def simulate_scenario(
     # Hedef analizi
     hedef_analizi = None
     if hedef_tutar and hedef_tutar > 0:
-        if mevcut_tasarruf > 0:
-            mevcut_sure = round(hedef_tutar / mevcut_tasarruf)
-        else:
-            mevcut_sure = None
-
-        if senaryo_tasarruf > 0:
-            senaryo_sure = round(hedef_tutar / senaryo_tasarruf)
-        else:
-            senaryo_sure = None
-
+        mevcut_sure = round(hedef_tutar / mevcut_tasarruf) if mevcut_tasarruf > 0 else None
+        senaryo_sure = round(hedef_tutar / senaryo_tasarruf) if senaryo_tasarruf > 0 else None
         hedef_analizi = {
             "hedef_tutar": hedef_tutar,
             "mevcut_sure_ay": mevcut_sure,
             "senaryo_sure_ay": senaryo_sure,
-            "gecikme_ay": (
-                senaryo_sure - mevcut_sure
-                if mevcut_sure and senaryo_sure
-                else None
-            )
+            "gecikme_ay": (senaryo_sure - mevcut_sure if mevcut_sure and senaryo_sure else None)
         }
 
-    # Tavsiye üret
+    # Tavsiye
     etki_orani = senaryo_tutar / mevcut_tasarruf if mevcut_tasarruf > 0 else 1
 
     if etki_orani == 0:
@@ -87,13 +72,14 @@ def simulate_scenario(
 
     logger.info(
         f"Senaryo simüle edildi: '{senaryo_aciklama}' "
-        f"— {senaryo_tutar:,.0f} TL — etki: {etki_seviyesi}"
+        f"— {senaryo_tutar:,.0f} TL/ay x {sure_ay} ay — etki: {etki_seviyesi}"
     )
 
     return {
         "senaryo": {
             "aciklama": senaryo_aciklama,
             "tutar": senaryo_tutar,
+            "sure_ay": sure_ay,
         },
         "mevcut_durum": {
             "aylik_tasarruf": round(mevcut_tasarruf, 0),
@@ -104,7 +90,8 @@ def simulate_scenario(
             "aylik_tasarruf": round(senaryo_tasarruf, 0),
             "yillik_tasarruf": round(yillik_tasarruf_senaryo, 0),
             "reel_yillik": round(reel_senaryo, 0),
-            "fark": round(yillik_tasarruf_mevcut - yillik_tasarruf_senaryo, 0),
+            "fark": round(sure_bazli_etki, 0),
+            "sure_bazli_etki": round(sure_bazli_etki, 0),
         },
         "etki_seviyesi": etki_seviyesi,
         "tavsiye": tavsiye,

@@ -41,8 +41,6 @@ with st.sidebar:
         st.success("Aktif oturum")
         st.caption(f"ID: {st.session_state['session_id'][:8]}...")
     st.divider()
-    st.caption("Gemini 2.5 · LangGraph · Qdrant")
-    st.caption("FastAPI · Streamlit")
 
 if page == "📤 Ekstre Yükle":
     st.title("📤 Banka Ekstresi Yükle")
@@ -74,9 +72,16 @@ if page == "📤 Ekstre Yükle":
 elif page == "📊 Analiz":
     st.title("📊 Finansal Analiz")
     if "result" not in st.session_state:
-        st.warning("Henüz analiz yapılmadı. Önce ekstre yükleyin."); st.stop()
+        st.warning("Henüz analiz yapılmadı. Önce ekstre yükleyin.")
+        st.stop()
 
     result = st.session_state["result"]
+    errors = result.get("errors", [])
+    if errors:
+        st.error(f"⚠️ {errors[0]}")
+        st.info("Lütfen tekrar analiz başlatın.")
+        st.stop()
+
     summary = result.get("parsed_summary", {}) or {}
     categories = result.get("categories", {}) or {}
     health = result.get("health_score", {}) or {}
@@ -108,14 +113,23 @@ elif page == "📊 Analiz":
                 mode="gauge+number", value=skor,
                 domain={"x": [0, 1], "y": [0, 1]},
                 title={"text": health.get("seviye", ""), "font": {"size": 16}},
-                gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#2e75b6"},
-                       "steps": [{"range": [0, 30], "color": "#3d1a1a"}, {"range": [30, 50], "color": "#3d2e1a"},
-                                  {"range": [50, 70], "color": "#2e3d1a"}, {"range": [70, 85], "color": "#1a3d2e"},
-                                  {"range": [85, 100], "color": "#1a2e3d"}],
-                       "threshold": {"line": {"color": "#ffffff", "width": 2}, "thickness": 0.75, "value": skor}}
+                gauge={
+                    "axis": {"range": [0, 100]},
+                    "bar": {"color": "#2e75b6"},
+                    "steps": [
+                        {"range": [0, 30], "color": "#3d1a1a"},
+                        {"range": [30, 50], "color": "#3d2e1a"},
+                        {"range": [50, 70], "color": "#2e3d1a"},
+                        {"range": [70, 85], "color": "#1a3d2e"},
+                        {"range": [85, 100], "color": "#1a2e3d"}
+                    ],
+                    "threshold": {"line": {"color": "#ffffff", "width": 2}, "thickness": 0.75, "value": skor}
+                }
             ))
-            fig_gauge.update_layout(height=220, margin=dict(t=30, b=10, l=20, r=20),
-                                     paper_bgcolor="rgba(0,0,0,0)", font_color="white")
+            fig_gauge.update_layout(
+                height=220, margin=dict(t=30, b=10, l=20, r=20),
+                paper_bgcolor="rgba(0,0,0,0)", font_color="white"
+            )
             st.plotly_chart(fig_gauge, use_container_width=True)
             st.caption(health.get("mesaj", ""))
             for k, v in health.get("bilesenler", {}).items():
@@ -126,27 +140,36 @@ elif page == "📊 Analiz":
         if categories:
             df = pd.DataFrame(list(categories.items()), columns=["Kategori", "Tutar (TL)"]).sort_values("Tutar (TL)", ascending=False)
             fig = px.bar(df, x="Kategori", y="Tutar (TL)", color="Tutar (TL)", color_continuous_scale="Blues")
-            fig.update_layout(height=300, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                               font_color="white", showlegend=False, margin=dict(t=10, b=40, l=40, r=10))
+            fig.update_layout(
+                height=300, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font_color="white", showlegend=False, margin=dict(t=10, b=40, l=40, r=10)
+            )
             st.plotly_chart(fig, use_container_width=True)
 
         with st.expander("✏️ Kategori Düzelt — Sistem Öğrenir"):
             st.caption("Yanlış kategorize edilen işlemi düzeltin.")
             col_k1, col_k2, col_k3 = st.columns(3)
             islem_adi = col_k1.text_input("İşlem adı", placeholder="Shell Yakıt")
-            eski_kat = col_k2.selectbox("Mevcut kategori", ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"])
-            yeni_kat = col_k3.selectbox("Doğru kategori", ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"], index=1)
+            eski_kat = col_k2.selectbox(
+                "Mevcut kategori",
+                ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"]
+            )
+            yeni_kat = col_k3.selectbox(
+                "Doğru kategori",
+                ["gida", "ulasim", "fatura", "eglence", "saglik", "kira", "diger"],
+                index=1
+            )
             if st.button("💾 Düzeltmeyi Kaydet"):
                 if islem_adi:
-                    resp = requests.post(f"{API_URL}/correct-category",
-                                          json={"aciklama": islem_adi, "eski_kategori": eski_kat, "yeni_kategori": yeni_kat})
+                    resp = requests.post(
+                        f"{API_URL}/correct-category",
+                        json={"aciklama": islem_adi, "eski_kategori": eski_kat, "yeni_kategori": yeni_kat}
+                    )
                     if resp.status_code == 200:
-                        st.success("✅ Sistem bu düzeltmeyi öğrendi!")
-                        cats = st.session_state["result"].get("categories", {})
-                        if eski_kat in cats:
-                            cats[yeni_kat] = cats.get(yeni_kat, 0) + cats.get(eski_kat, 0)
-                            del cats[eski_kat]
-                            st.session_state["result"]["categories"] = cats
+                        data = resp.json()
+                        st.success("✅ Sistem bu düzeltmeyi öğrendi ve işlemlere uyguladı!")
+                        if data.get("updated_categories"):
+                            st.session_state["result"]["categories"] = data["updated_categories"]
                             st.rerun()
                 else:
                     st.warning("İşlem adı girin.")
@@ -181,13 +204,14 @@ elif page == "📊 Analiz":
     if cashflow:
         st.divider()
         st.subheader("💵 30 Günlük Nakit Akış Tahmini")
-        renk_fn = {"success": st.success, "warning": st.warning, "error": st.error}.get(cashflow.get("risk_renk", "warning"), st.info)
+        renk_fn = {"success": st.success, "warning": st.warning, "error": st.error}.get(
+            cashflow.get("risk_renk", "warning"), st.info)
         renk_fn(cashflow.get("risk_mesaj", ""))
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Mevcut Nakit", f"{cashflow.get('mevcut_nakit', 0):,.0f} TL")
         c2.metric("Ay Sonu Tahmini", f"{cashflow.get('ay_sonu_tahmini', 0):,.0f} TL")
         c3.metric("Günlük Harcama Limiti", f"{cashflow.get('gunluk_guvenli_limit', 0):,.0f} TL/gün",
-                   help="Sabit giderler düşüldükten sonra kalan günlere bölünen kullanılabilir günlük bütçeniz.")
+                  help="Sabit giderler düşüldükten sonra kalan günlere bölünen kullanılabilir günlük bütçeniz.")
         c4.metric("Kalan Gün", f"{cashflow.get('ayin_kalan_gunu', 0)} gün")
 
     st.divider()
@@ -195,19 +219,24 @@ elif page == "📊 Analiz":
     with col_a:
         st.subheader("⚠️ Proaktif Uyarılar")
         alerts = result.get("proactive_alerts", []) or []
-        for a in alerts: st.warning(a)
-        if not alerts: st.success("Kritik uyarı yok.")
+        for a in alerts:
+            st.warning(a)
+        if not alerts:
+            st.success("Kritik uyarı yok.")
     with col_b:
         st.subheader("🔍 Anomaliler")
         anomalies = result.get("anomalies", []) or []
-        for a in anomalies: st.error(a)
-        if not anomalies: st.success("Anomali tespit edilmedi.")
+        for a in anomalies:
+            st.error(a)
+        if not anomalies:
+            st.success("Anomali tespit edilmedi.")
 
     insights = result.get("behavioral_insights", []) or []
     if insights:
         st.divider()
         st.subheader("🧠 Davranışsal Analiz")
-        for i in insights: st.info(i)
+        for i in insights:
+            st.info(i)
 
     st.divider()
     st.subheader("🤖 FinSight Tavsiyesi")
@@ -275,26 +304,53 @@ elif page == "🎯 Profil & Hedefler":
         yatirim_listesi = []; yatirimlar_str = "Yok"; toplam_yatirim = 0
         if yatirim_var == "Evet":
             st.caption("Sahip olduğunuz yatırımları ve tutarlarını girin.")
-            col_y1, col_y2 = st.columns([2, 3])
-            doviz_secili = col_y1.checkbox("Döviz (USD/EUR)")
-            if doviz_secili:
-                doviz_tutar = col_y2.number_input("Döviz tutarı (TL)", min_value=0, value=0, step=5000, key="doviz_t")
-                if doviz_tutar > 0:
-                    yatirim_listesi.append({"tur": "Döviz (USD/EUR)", "tutar": doviz_tutar}); toplam_yatirim += doviz_tutar
 
+            # Döviz (Dolar)
+            col_y1, col_y2 = st.columns([2, 3])
+            dolar_secili = col_y1.checkbox("Döviz (Dolar)")
+            if dolar_secili:
+                dolar_miktar = col_y2.number_input(
+                    "Dolar miktarı (USD)", min_value=0.0, value=0.0, step=100.0, key="dolar_m"
+                )
+                if dolar_miktar > 0:
+                    usd_kur = st.session_state.get("result", {}).get("fx_shield", {}).get("usd_kur", 45.5)
+                    dolar_tl = round(dolar_miktar * usd_kur, 0)
+                    col_y2.caption(f"≈ {dolar_tl:,.0f} TL (kur: {usd_kur:.2f})")
+                    yatirim_listesi.append({"tur": "Döviz (USD/EUR)", "tutar": dolar_tl})
+                    toplam_yatirim += dolar_tl
+
+            # Döviz (Euro)
+            col_y1, col_y2 = st.columns([2, 3])
+            euro_secili = col_y1.checkbox("Döviz (Euro)")
+            if euro_secili:
+                euro_miktar = col_y2.number_input(
+                    "Euro miktarı (EUR)", min_value=0.0, value=0.0, step=100.0, key="euro_m"
+                )
+                if euro_miktar > 0:
+                    eur_kur = st.session_state.get("result", {}).get("fx_shield", {}).get("eur_kur", 52.9)
+                    euro_tl = round(euro_miktar * eur_kur, 0)
+                    col_y2.caption(f"≈ {euro_tl:,.0f} TL (kur: {eur_kur:.2f})")
+                    yatirim_listesi.append({"tur": "Döviz (USD/EUR)", "tutar": euro_tl})
+                    toplam_yatirim += euro_tl
+
+            # Altın
             col_y1, col_y2 = st.columns([2, 3])
             altin_secili = col_y1.checkbox("Altın")
             if altin_secili:
                 altin_tutar = col_y2.number_input("Altın tutarı (TL)", min_value=0, value=0, step=5000, key="altin_t")
                 if altin_tutar > 0:
-                    yatirim_listesi.append({"tur": "Altın", "tutar": altin_tutar}); toplam_yatirim += altin_tutar
+                    yatirim_listesi.append({"tur": "Altın", "tutar": altin_tutar})
+                    toplam_yatirim += altin_tutar
 
+            # Vadeli Birikim
             col_y1, col_y2 = st.columns([2, 3])
             vadeli_secili = col_y1.checkbox("Vadeli Birikim")
             if vadeli_secili:
                 vadeli_tutar = col_y2.number_input("Birikim tutarı (TL)", min_value=0, value=0, step=5000, key="vadeli_t")
-                vadeli_faiz = st.number_input("Yıllık faiz oranı (%)", min_value=0.0, max_value=100.0, value=43.0, step=0.5,
-                                               help="Bankanızın sunduğu yıllık faiz oranı.")
+                vadeli_faiz = st.number_input(
+                    "Yıllık faiz oranı (%)", min_value=0.0, max_value=100.0, value=43.0, step=0.5,
+                    help="Bankanızın sunduğu yıllık faiz oranı."
+                )
                 if vadeli_tutar > 0:
                     yatirim_listesi.append({"tur": "Mevduat", "tutar": vadeli_tutar, "ozel_faiz": vadeli_faiz})
                     toplam_yatirim += vadeli_tutar
@@ -302,7 +358,8 @@ elif page == "🎯 Profil & Hedefler":
             if yatirim_listesi:
                 yatirimlar_str = ", ".join([y["tur"] for y in yatirim_listesi])
                 st.caption("Seçilen yatırımlar:")
-                for y in yatirim_listesi: st.markdown(f"• **{y['tur']}**: {y['tutar']:,.0f} TL")
+                for y in yatirim_listesi:
+                    st.markdown(f"• **{y['tur']}**: {y['tutar']:,.0f} TL")
 
     st.divider()
     st.subheader("Finansal Hedefleriniz")
@@ -386,9 +443,17 @@ elif page == "🔮 Senaryo":
     col1, col2 = st.columns(2)
     with col1:
         senaryo_ad = st.text_input("Harcama adı", value=default_ad, placeholder="Örn: Yurt dışı tatil")
-        senaryo_tutar = st.number_input("Harcama tutarı (TL)", min_value=0, value=default_tutar, step=500)
+        senaryo_tutar = st.number_input(
+            "Aylık Harcama/Gider Tutarı (TL)",
+            min_value=0, value=default_tutar, step=500,
+            help="Bu harcamayı her ay yapacaksanız aylık tutarını girin."
+        )
     with col2:
-        hedef_tutar = st.number_input("Birikim hedefiniz (TL) — opsiyonel", min_value=0, value=0, step=1000)
+        hedef_tutar = st.number_input(
+            "Aylık Birikim Hedefi (TL) — opsiyonel",
+            min_value=0, value=0, step=1000,
+            help="Her ay biriktirmek istediğiniz tutar."
+        )
         sure_ay = st.number_input("Ne kadar sürecek? (ay)", min_value=1, value=12, step=1, help="Örn: 12 = 1 yıl")
 
     st.info("💡 Bu araç, yapmayı düşündüğünüz harcamanın aylık tasarrufunuzu ve birikim hedefinizi nasıl etkileyeceğini hesaplar.")
@@ -412,7 +477,10 @@ elif page == "🔮 Senaryo":
                     mevcut = data.get("mevcut_durum", {}); senaryo = data.get("senaryo_sonrasi", {})
                     col_s1.metric("Mevcut Aylık Tasarruf", f"{mevcut.get('aylik_tasarruf', 0):,.0f} TL")
                     col_s2.metric("Senaryo Sonrası", f"{senaryo.get('aylik_tasarruf', 0):,.0f} TL", delta=f"-{senaryo_tutar:,.0f} TL")
-                    col_s3.metric("Yıllık Etki", f"{senaryo.get('fark', 0):,.0f} TL kayıp")
+                    col_s3.metric(
+                        f"{sure_ay} Aylık Toplam Etki",
+                        f"{senaryo.get('sure_bazli_etki', senaryo.get('fark', 0)):,.0f} TL"
+                    )
                     h = data.get("hedef_analizi")
                     if h and h.get("mevcut_sure_ay"):
                         gecikme = h.get("gecikme_ay", 0) or 0
@@ -469,6 +537,12 @@ elif page == "📝 Günlük İşlem Ekle":
                                 st.caption("Bu işlem analize yansıtıldı.")
                                 df = pd.DataFrame(list(updated_cats.items()), columns=["Kategori", "Tutar (TL)"]).sort_values("Tutar (TL)", ascending=False)
                                 st.dataframe(df, use_container_width=True, hide_index=True)
+                                if "result" in st.session_state:
+                                    st.session_state["result"]["categories"] = updated_cats
+                                if data.get("updated_health_score"):
+                                    st.session_state["result"]["health_score"] = data["updated_health_score"]
+                                if data.get("updated_cashflow"):
+                                    st.session_state["result"]["cashflow_forecast"] = data["updated_cashflow"]
                     else:
                         st.error(f"Hata: {resp.text}")
 
