@@ -37,8 +37,8 @@ def generate_proactive_alerts(
     """Kullanıcı sormadan proaktif uyarılar üretir."""
     alerts = []
 
-    toplam_gelir = parsed_summary.get("toplam_gelir", 0)
-    toplam_gider = parsed_summary.get("toplam_gider", 0)
+    toplam_gelir = parsed_summary.get("toplam_gelir") or 0
+    toplam_gider = abs(parsed_summary.get("toplam_gider") or 0)
 
     # Tasarruf oranı uyarısı
     if toplam_gelir > 0:
