@@ -289,6 +289,8 @@ Mevcut sürümde tek dönem analizi destekleniyor. Gelecek sürümler için plan
 İnönü Üniversitesi — Yazılım Mühendisliği 2. Sınıf
 **Nihat Burak Eraslan**
 İnönü Üniversitesi — Yazılım Mühendisliği 2. Sınıf
+**Samet Çakmak**
+İnönü Üniversitesi — Bilgisayar Mühendisliği 3. Sınıf
 ---
 
 *FinSight Agent — Hackathon 2026*
